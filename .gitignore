@@ -29,6 +29,7 @@ master.key
 
 # Ignore env files
 .env
+.env.dev
 
 public/uploads
 public/packs*
@@ -104,3 +105,6 @@ CLAUDE.local.md
 .pnpm-store/*
 local/
 Procfile.worktree
+
+# DockerData
+docker_data/*

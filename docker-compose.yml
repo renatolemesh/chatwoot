@@ -1,0 +1,111 @@
+services:
+  postgres:
+    container_name: test-chatwoot-postgres
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_DB=chatwoot_production
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./docker_data/postgres:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5439:5432'
+    expose:
+      - 5439
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: test-chatwoot-redis
+    restart: always
+    networks:
+      - shared-net
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: >
+      redis-server --requirepass "${REDIS_PASSWORD}" --port 6384 --appendonly yes
+    volumes:
+      - ./docker_data/redis:/data
+    ports:
+      - '127.0.0.1:6384:6384'
+    env_file: .env
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dummy}
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - CHATWOOT_BASE_URL=${CHATWOOT_BASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - FORCE_SSL=true
+      - RAILS_FORCE_SSL=true
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - CHATWOOT_HUB_URL=https://oriondesign.art.br/setup#
+      - FRONTEND_APP_TITLE=Connect
+      - BRAND_NAME=Connect
+      - INSTALLATION_NAME=Connect
+      - DISPLAY_MANIFEST=false
+      - DB_POOL=25
+      - DB_TIMEOUT=30000
+      - DB_CONNECT_TIMEOUT=30
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=chatwoot_production
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6384
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3002', '-b', '0.0.0.0']
+    ports:
+      - "0.0.0.0:3002:3002"
+    networks:
+      - shared-net
+    container_name: test-chatwoot-rails
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dummy}
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - CHATWOOT_HUB_URL=https://oriondesign.art.br/setup#
+      - FRONTEND_APP_TITLE=Connect
+      - BRAND_NAME=Connect
+      - INSTALLATION_NAME=Connect
+      - DISPLAY_MANIFEST=false
+      - DB_POOL=25
+      - DB_TIMEOUT=30000
+      - DB_CONNECT_TIMEOUT=30
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=chatwoot_production
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6384
+    container_name: test-chatwoot-sidekiq
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    networks:
+      - shared-net
+    restart: always
+
+networks:
+  shared-net:
+    external: true

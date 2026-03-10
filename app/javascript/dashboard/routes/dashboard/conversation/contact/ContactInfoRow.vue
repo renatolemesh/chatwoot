@@ -37,6 +37,39 @@ export default {
       await copyTextToClipboard(this.value);
       useAlert(this.$t('CONTACT_PANEL.COPY_SUCCESSFUL'));
     },
+    formatPhoneNumber(phone) {
+      let digits = phone.replace(/\D/g, '');
+
+      if (digits.length === 13) {
+        // +55 DDD 9 XXXX-XXXX → remove DDI(2) + DDD(2) + 9
+        digits = digits.slice(4);
+        if (digits.length === 9) digits = digits.slice(1);
+      } else if (digits.length === 12) {
+        // +55 DDD XXXX-XXXX → remove DDI(2) + DDD(2)
+        digits = digits.slice(4);
+      } else if (digits.length === 11) {
+        // DDD 9 XXXX-XXXX → remove DDD(2) + 9
+        digits = digits.slice(2);
+        if (digits.length === 9) digits = digits.slice(1);
+      } else if (digits.length === 10) {
+        // DDD XXXX-XXXX → remove DDD(2)
+        digits = digits.slice(2);
+      } else if (digits.length === 9) {
+        // 9 XXXX-XXXX → remove 9
+        digits = digits.slice(1);
+      }
+
+      if (digits.length === 8) {
+        return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+      }
+      return digits;
+    },
+    async onCopyFormatted(e) {
+      e.preventDefault();
+      const formatted = this.formatPhoneNumber(this.value);
+      await copyTextToClipboard(formatted);
+      useAlert(this.$t('CONTACT_PANEL.COPY_SUCCESSFUL'));
+    },
   },
 };
 </script>
@@ -72,6 +105,16 @@ export default {
         class="ltr:-ml-1 rtl:-mr-1"
         icon="i-lucide-clipboard"
         @click="onCopy"
+      />
+      <NextButton
+        v-if="showCopy"
+        ghost
+        xs
+        slate
+        class="ltr:-ml-1 rtl:-mr-1"
+        icon="i-lucide-brush"
+        title="Copiar formatado (xxxx-xxxx)"
+        @click="onCopyFormatted"
       />
     </a>
 

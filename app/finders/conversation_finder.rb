@@ -40,7 +40,7 @@ class ConversationFinder
   def perform
     set_up
 
-    mine_count, unassigned_count, all_count, = set_count_for_all_conversations
+    mine_count, unassigned_count, all_count = set_count_for_all_conversations
     assigned_count = all_count - unassigned_count
 
     filter_by_assignee_type
@@ -161,7 +161,15 @@ class ConversationFinder
   def filter_by_status
     return if params[:status] == 'all'
 
-    @conversations = @conversations.where(status: params[:status] || DEFAULT_STATUS)
+    if params[:status] == 'open' || params[:status].nil?
+      # status 0 = open
+      # message_type 0 = incoming (client)
+      @conversations = @conversations.where(status: 0)
+        .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
+        .where("0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1)")
+    else
+      @conversations = @conversations.where(status: params[:status])
+    end
   end
 
   def filter_by_team
@@ -184,11 +192,24 @@ class ConversationFinder
   end
 
   def set_count_for_all_conversations
-    [
-      @conversations.assigned_to(current_user).count,
-      @conversations.unassigned.count,
-      @conversations.count
-    ]
+    # If we are looking at 'open' or 'pending' (which you use for unread logic)
+    if ['open', 'pending', nil].include?(params[:status])
+      unread_scope = @conversations.where(status: 0)
+        .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
+        .where("0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1)")
+
+      [
+        unread_scope.assigned_to(current_user).count,
+        unread_scope.unassigned.count,
+        unread_scope.count
+      ]
+    else
+      [
+        @conversations.assigned_to(current_user).count,
+        @conversations.unassigned.count,
+        @conversations.count
+      ]
+    end
   end
 
   def current_page

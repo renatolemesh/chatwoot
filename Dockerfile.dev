@@ -1,0 +1,44 @@
+# Dockerfile.dev
+# Single-stage dev image — includes build tools so native gems (stackprof, etc.)
+# can be compiled at container startup via `bundle install`
+FROM ruby:3.4.4-slim
+
+ENV RAILS_ENV=development \
+    NODE_ENV=development \
+    BUNDLE_PATH=/bundle \
+    RAILS_LOG_TO_STDOUT=true
+
+# All build + runtime deps in one stage
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    ca-certificates \
+    pkg-config \
+    libpq-dev \
+    libpq5 \
+    libvips \
+    postgresql-client \
+    ruby-dev \
+    python3 \
+    tmux \
+  && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+  && apt-get install -y --no-install-recommends nodejs \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install overmind
+RUN curl -fsSL https://github.com/DarthSim/overmind/releases/download/v2.4.0/overmind-v2.4.0-linux-amd64.gz \
+    | gunzip -c > /usr/local/bin/overmind \
+    && chmod +x /usr/local/bin/overmind
+
+# pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Pre-install gems into the bundle cache layer
+# (will be overridden at runtime by bundle_cache volume + bundle install)
+COPY Gemfile Gemfile.lock ./
+RUN gem install bundler
+
+EXPOSE 3002

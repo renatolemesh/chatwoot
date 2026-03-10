@@ -4,17 +4,25 @@ import mutationTypes from '../../../mutation-types';
 
 export default {
   markMessagesRead: async ({ commit }, data) => {
+    const { id } = data;
+
+    // atualização otimista (instantânea)
+    commit(mutationTypes.UPDATE_MESSAGE_UNREAD_COUNT, {
+      id,
+      unreadCount: 0,
+    });
+
     try {
       const {
-        data: { id, agent_last_seen_at: lastSeen },
+        data: { agent_last_seen_at: lastSeen },
       } = await ConversationApi.markMessageRead(data);
-      setTimeout(
-        () =>
-          commit(mutationTypes.UPDATE_MESSAGE_UNREAD_COUNT, { id, lastSeen }),
-        4000
-      );
+
+      commit(mutationTypes.UPDATE_MESSAGE_UNREAD_COUNT, {
+        id,
+        lastSeen,
+      });
     } catch (error) {
-      // Handle error
+      throwErrorMessage(error);
     }
   },
 
@@ -23,6 +31,7 @@ export default {
       const {
         data: { agent_last_seen_at: lastSeen, unread_count: unreadCount },
       } = await ConversationApi.markMessagesUnread({ id });
+
       commit(mutationTypes.UPDATE_MESSAGE_UNREAD_COUNT, {
         id,
         lastSeen,
