@@ -10,6 +10,10 @@ const { content, contentAttributes, contentType } = useMessageContext();
 const { t } = useI18n();
 const { isAWebWidgetInbox } = useInbox();
 
+const formattedContent = computed(() => {
+  return (content.value || '').replace(/\n/g, '<br>');
+});
+
 const formValues = computed(() => {
   if (contentType.value === CONTENT_TYPES.FORM) {
     const { items, submittedValues = [] } = contentAttributes.value;
@@ -49,7 +53,11 @@ const formValues = computed(() => {
 
 <template>
   <BaseBubble class="px-4 py-3" data-bubble-name="csat">
-    <span v-dompurify-html="content" :title="content" />
+    <span
+      v-dompurify-html="formattedContent"
+      :title="content"
+    />
+
     <dl v-if="formValues.length" class="mt-4">
       <template v-for="item in formValues" :key="item.title">
         <dt class="text-n-slate-11 italic mt-2">
@@ -58,6 +66,7 @@ const formValues = computed(() => {
         <dd>{{ item.title }}</dd>
       </template>
     </dl>
+
     <div v-else-if="isAWebWidgetInbox" class="my-2 font-medium">
       {{ t('CONVERSATION.NO_RESPONSE') }}
     </div>
