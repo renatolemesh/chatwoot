@@ -1,14 +1,17 @@
-# Dockerfile.dev
-# Single-stage dev image — includes build tools so native gems (stackprof, etc.)
-# can be compiled at container startup via `bundle install`
-FROM ruby:3.4.4-slim
+# Dockerfile.dev.optimized
+# Multi-stage build with optimized layer caching for faster development iteration
+
+# ============================================================================
+# Stage 1: Base image with system dependencies
+# ============================================================================
+FROM ruby:3.4.4-slim AS base
 
 ENV RAILS_ENV=development \
     NODE_ENV=development \
     BUNDLE_PATH=/bundle \
     RAILS_LOG_TO_STDOUT=true
 
-# All build + runtime deps in one stage
+# Install all system dependencies in one layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
@@ -26,19 +29,50 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
 
-# Install overmind
+# Install overmind (process manager)
 RUN curl -fsSL https://github.com/DarthSim/overmind/releases/download/v2.4.0/overmind-v2.4.0-linux-amd64.gz \
     | gunzip -c > /usr/local/bin/overmind \
     && chmod +x /usr/local/bin/overmind
 
-# pnpm via corepack
+# Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install bundler
+RUN gem install bundler
 
 WORKDIR /app
 
-# Pre-install gems into the bundle cache layer
-# (will be overridden at runtime by bundle_cache volume + bundle install)
-COPY Gemfile Gemfile.lock ./
-RUN gem install bundler
+# ============================================================================
+# Stage 2: Dependencies layer (cached unless package files change)
+# ============================================================================
+FROM base AS dependencies
 
-EXPOSE 3002
+# Copy only dependency definition files (for layer caching)
+COPY Gemfile Gemfile.lock ./
+COPY package.json pnpm-lock.yaml ./
+
+# Install Ruby gems
+# This layer will be cached unless Gemfile changes
+RUN bundle install --jobs 4 --retry 3
+
+# Install Node.js dependencies
+# This layer will be cached unless package.json or pnpm-lock.yaml changes
+RUN pnpm install --frozen-lockfile --prefer-offline
+
+# ============================================================================
+# Stage 3: Development runtime
+# ============================================================================
+FROM base AS development
+
+# Copy installed dependencies from dependencies stage
+COPY --from=dependencies /bundle /bundle
+COPY --from=dependencies /app/node_modules /app/node_modules
+
+# The application code will be mounted as a volume at runtime
+# This means we don't copy the application code into the image
+# allowing for instant reflection of code changes
+
+EXPOSE 3002 3036
+
+# Default command (can be overridden in docker-compose)
+CMD ["bash"]

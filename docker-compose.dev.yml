@@ -39,6 +39,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      target: development
+      # BuildKit cache mounts for faster rebuilds
+      cache_from:
+        - type=local,src=/tmp/.buildx-cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,17 +74,32 @@ services:
       - VITE_RUBY_AUTO_BUILD=false
       - VITE_RUBY_HMR_HOST=localhost
     volumes:
-      - .:/app
+      # Mount source code for hot reload (but exclude node_modules and bundle)
+      - .:/app:cached
+      # Persistent volumes for dependencies (faster than re-mounting from image)
       - bundle_cache:/bundle
       - node_modules_cache:/app/node_modules
+      # Anonymous volumes for temporary files (prevents permission issues)
       - /app/tmp
-    command: >
+      - /app/log
+    command: |
       bash -lc "
-      until PGPASSWORD='${POSTGRES_PASSWORD}' psql -h postgres -U postgres -d chatwoot_production -c 'select 1' >/dev/null 2>&1; do
+      set -e;
+      until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U postgres -d chatwoot_production -c 'select 1' >/dev/null 2>&1; do
         echo 'Waiting for postgres auth...';
         sleep 2;
       done;
-      bundle install && bundle exec rails s -p 3002 -b 0.0.0.0
+      
+      # Only run bundle install if Gemfile.lock has changed
+      if ! bundle check >/dev/null 2>&1; then
+        echo 'Installing Ruby gems...'
+        bundle install --jobs 4 --retry 3
+      else
+        echo 'Ruby gems already installed, skipping bundle install'
+      fi
+      
+      # Start Rails server
+      bundle exec rails s -p 3002 -b 0.0.0.0
       "
     ports:
       - "0.0.0.0:3002:3002"
@@ -93,6 +112,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      target: development
+      cache_from:
+        - type=local,src=/tmp/.buildx-cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,7 +130,7 @@ services:
       - BUNDLE_WITHOUT=
       - BUNDLE_PATH=/bundle
       - INSTALLATION_ENV=docker
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=test-chatwoot-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -118,17 +140,29 @@ services:
       - FORCE_SSL=false
       - DISABLE_FORCE_SSL=true
     volumes:
-      - .:/app
+      - .:/app:cached
       - bundle_cache:/bundle
       - node_modules_cache:/app/node_modules
       - /app/tmp
-    command: >
+      - /app/log
+    command: |
       bash -lc "
-      until PGPASSWORD='${POSTGRES_PASSWORD}' psql -h postgres -U postgres -d chatwoot_production -c 'select 1' >/dev/null 2>&1; do
+      set -e;
+      until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U postgres -d chatwoot_production -c 'select 1' >/dev/null 2>&1; do
         echo 'Waiting for postgres auth...';
         sleep 2;
       done;
-      bundle install && bundle exec sidekiq -C config/sidekiq.yml
+      
+      # Only run bundle install if needed
+      if ! bundle check >/dev/null 2>&1; then
+        echo 'Installing Ruby gems...'
+        bundle install --jobs 4 --retry 3
+      else
+        echo 'Ruby gems already installed, skipping bundle install'
+      fi
+      
+      # Start Sidekiq worker
+      bundle exec sidekiq -C config/sidekiq.yml
       "
     networks:
       - shared-net
@@ -139,6 +173,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      target: development
+      cache_from:
+        - type=local,src=/tmp/.buildx-cache
     depends_on:
       web:
         condition: service_started
@@ -149,7 +186,7 @@ services:
       - VITE_RUBY_HOST=0.0.0.0
       - VITE_RUBY_PORT=3036
       - BUNDLE_PATH=/bundle
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=test-chatwoot-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -157,15 +194,35 @@ services:
       - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/chatwoot_production
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6384
       - VITE_ALLOW_EXTERNAL_HOSTS=true
-      - CHOKIDAR_USEPOLLING=true
+      # Use native file watching instead of polling for better performance
+      - CHOKIDAR_USEPOLLING=false
+      # Enable file system events
       - VITE_RUBY_HMR_HOST=localhost
     volumes:
-      - .:/app
+      # Mount source code with cached option for better performance
+      - .:/app:cached
       - bundle_cache:/bundle
+      # Critical: Share node_modules from the image, not as a volume
+      # This prevents the slow pnpm install on every start
       - node_modules_cache:/app/node_modules
-    command: >
+    command: |
       bash -lc "
-      pnpm install;
+      set -e
+      
+      # Only install dependencies if package.json or pnpm-lock.yaml has changed
+      # Check if node_modules is properly populated
+      if [ ! -d 'node_modules/.pnpm' ] || [ ! -f 'node_modules/.modules.yaml' ]; then
+        echo 'Installing Node.js dependencies (first time or cache invalid)...';
+        pnpm install --frozen-lockfile --prefer-offline;
+      elif [ 'package.json' -nt 'node_modules/.modules.yaml' ] || [ 'pnpm-lock.yaml' -nt 'node_modules/.modules.yaml' ]; then
+        echo 'Dependencies changed, running pnpm install...';
+        pnpm install --frozen-lockfile --prefer-offline;
+      else
+        echo 'Dependencies up to date, skipping pnpm install';
+      fi
+      
+      # Start Vite dev server with optimized HMR settings
+      echo 'Starting Vite dev server...';
       ./node_modules/.bin/vite dev --host 0.0.0.0 --port 3036 --cors --strictPort
       "
     ports:
