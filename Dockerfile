@@ -77,7 +77,7 @@ WORKDIR /app
 COPY --from=builder /bundle /bundle
 COPY --from=builder /app /app
 
-EXPOSE 3002
+EXPOSE 3003
 
 # Default: migrate then start web.
-CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3002"]
+CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3003"]
