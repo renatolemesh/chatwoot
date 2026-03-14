@@ -73,6 +73,15 @@ class ConversationFinder
   end
 
   private
+  
+  def excluded_content_filter
+    excluded = ENV['EXCLUDED_PENDING_CONTENT']&.split(',')&.map { |w| "'#{w.downcase.strip}'" }&.join(',')
+    excluded.present? ? "AND LOWER(messages.content) NOT IN (#{excluded})" : ''
+  end
+
+  def unread_message_filter
+    "0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id #{excluded_content_filter} ORDER BY created_at DESC LIMIT 1)"
+  end
 
   def set_up
     set_inboxes
@@ -162,11 +171,9 @@ class ConversationFinder
     return if params[:status] == 'all'
 
     if params[:status] == 'open' || params[:status].nil?
-      # status 0 = open
-      # message_type 0 = incoming (client)
       @conversations = @conversations.where(status: 0)
         .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
-        .where("0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1)")
+        .where(unread_message_filter)
     else
       @conversations = @conversations.where(status: params[:status])
     end
@@ -192,11 +199,10 @@ class ConversationFinder
   end
 
   def set_count_for_all_conversations
-    # If we are looking at 'open' or 'pending' (which you use for unread logic)
     if ['open', 'pending', nil].include?(params[:status])
       unread_scope = @conversations.where(status: 0)
         .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
-        .where("0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1)")
+        .where(unread_message_filter)
 
       [
         unread_scope.assigned_to(current_user).count,

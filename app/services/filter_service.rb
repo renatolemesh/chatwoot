@@ -20,13 +20,21 @@ class FilterService
 
   def perform; end
 
+  def excluded_content_filter
+    excluded = ENV['EXCLUDED_PENDING_CONTENT']&.split(',')&.map { |w| "'#{w.downcase.strip}'" }&.join(',')
+    excluded.present? ? "AND LOWER(messages.content) NOT IN (#{excluded})" : ''
+  end
+
+  def unread_message_filter
+    "0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id #{excluded_content_filter} ORDER BY created_at DESC LIMIT 1)"
+  end
+
   def filter_operation(query_hash, current_index)
-    # Handle unread filter for pending status
     if query_hash[:attribute_key] == 'status' && query_hash[:values]&.include?('open')
       @filter_values["value_#{current_index}"] = nil
-      return  "(status = 0 
+      return "(status = 0 
           AND (agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at)
-          AND 0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1))"
+          AND #{unread_message_filter})"
     end
 
     case query_hash[:filter_operator]
@@ -210,12 +218,11 @@ class FilterService
 
   def query_builder(model_filters)
     @params[:payload].each_with_index do |query_hash, current_index|
-      # Special handling for open status
       if query_hash['attribute_key'] == 'status' && query_hash['values']&.include?('open')
-        @query_string += " (status = 0 AND (agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at)) #{query_hash[:query_operator]}"
+        @query_string += " (status = 0 AND (agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at) AND #{unread_message_filter}) #{query_hash[:query_operator]}"
         next
       end
-    
+
       @query_string += " #{build_condition_query(model_filters, query_hash, current_index).strip}"
     end
     base_relation.where(@query_string, @filter_values.with_indifferent_access)
