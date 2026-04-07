@@ -35,6 +35,15 @@ const formatTimeProgress = time => {
   );
 };
 
+const getRecordMimeType = () => {
+  // Prefer ogg over webm: Firefox can record webm but cannot decode it
+  // via decodeAudioData, which breaks MP3 conversion. Firefox can both
+  // record and decode ogg. Chrome doesn't support ogg recording, so it
+  // falls through to webm which it handles fine.
+  const types = ['audio/ogg', 'audio/webm', 'audio/wav', 'audio/mp4'];
+  return types.find(type => MediaRecorder.isTypeSupported(type));
+};
+
 const initWaveSurfer = () => {
   wavesurfer.value = WaveSurfer.create({
     container: waveformContainer.value,
@@ -48,6 +57,7 @@ const initWaveSurfer = () => {
       RecordPlugin.create({
         scrollingWaveform: true,
         renderRecordedAudio: false,
+        mimeType: getRecordMimeType(),
       }),
     ],
   });

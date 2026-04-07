@@ -1,5 +1,6 @@
-# Dockerfile
-# Build Chatwoot from THIS repository source
+# =========================
+# BUILDER
+# =========================
 FROM ruby:3.4.4-slim AS builder
 
 ENV RAILS_ENV=production \
@@ -7,7 +8,7 @@ ENV RAILS_ENV=production \
     BUNDLE_WITHOUT="development:test" \
     BUNDLE_PATH=/bundle
 
-# System dependencies
+# System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
@@ -19,12 +20,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips \
   && rm -rf /var/lib/apt/lists/*
 
-# Node.js for Builder
+# Node 20
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
   && apt-get update && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
 
-# pnpm via corepack
+# pnpm (via corepack)
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
@@ -35,15 +36,17 @@ RUN gem install bundler && bundle install
 
 # JS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
 
-# App source
+# 🔥 INSTALAÇÃO CORRETA (resolve Vite + Chart.js)
+RUN rm -rf node_modules && \
+    pnpm install --no-frozen-lockfile --shamefully-hoist
+
+# App
 COPY . .
 
-# Build-time secret key base requirement for assets precompile
+# Build assets
 ARG SECRET_KEY_BASE=dummy
 
-# Precompile assets with increased Node.js heap to avoid OOM during Vite build
 RUN export NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" && \
     SECRET_KEY_BASE=${SECRET_KEY_BASE} \
     RAILS_LOG_TO_STDOUT=enabled \
@@ -51,7 +54,10 @@ RUN export NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" &&
     rm -rf node_modules tmp/cache
 
 
-FROM ruby:3.4.4-slim AS runtime
+# =========================
+# RUNTIME
+# =========================
+FROM ruby:3.4.4-slim
 
 ENV RAILS_ENV=production \
     NODE_ENV=production \
@@ -60,7 +66,7 @@ ENV RAILS_ENV=production \
     RAILS_LOG_TO_STDOUT=true \
     RAILS_SERVE_STATIC_FILES=true
 
-# Runtime dependencies including postgresql-client, git, and Node.js
+# Runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     libvips \
@@ -72,12 +78,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
 
+# pnpm também no runtime (pra debug futuro)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 COPY --from=builder /bundle /bundle
 COPY --from=builder /app /app
 
-EXPOSE 3003
+EXPOSE 3002
 
-# Default: migrate then start web.
-CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3003"]
+CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3002"]

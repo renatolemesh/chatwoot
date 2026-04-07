@@ -104,32 +104,19 @@ export const encodeToMP3 = (channels, sampleRate, samples, bitrate = 128) => {
 export const convertToMp3 = async (audioBlob, bitrate = 128) => {
   try {
     const audioBuffer = await decodeAudioData(audioBlob);
-    const samples = new Int16Array(
-      audioBuffer.length * audioBuffer.numberOfChannels
-    );
-    let offset = 0;
-    for (let i = 0; i < audioBuffer.length; i += 1) {
-      for (
-        let channel = 0;
-        channel < audioBuffer.numberOfChannels;
-        channel += 1
-      ) {
-        const sample = Math.max(
-          -1,
-          Math.min(1, audioBuffer.getChannelData(channel)[i])
-        );
-        samples[offset] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-        offset += 1;
+    const { numberOfChannels, length, sampleRate } = audioBuffer;
+    const samples = new Int16Array(length);
+    for (let i = 0; i < length; i += 1) {
+      let sum = 0;
+      for (let channel = 0; channel < numberOfChannels; channel += 1) {
+        sum += audioBuffer.getChannelData(channel)[i];
       }
+      const sample = Math.max(-1, Math.min(1, sum / numberOfChannels));
+      samples[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
     }
-    return encodeToMP3(
-      audioBuffer.numberOfChannels,
-      audioBuffer.sampleRate,
-      samples,
-      bitrate
-    );
+    return encodeToMP3(1, sampleRate, samples, bitrate);
   } catch (error) {
-    throw new Error('Conversion to MP3 failed.');
+    throw new Error(`Conversion to MP3 failed: ${error.message}`);
   }
 };
 

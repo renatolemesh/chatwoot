@@ -1,6 +1,6 @@
 services:
-  postgres:
-    container_name: agile-chatwoot-postgres
+  test-chatwoot-postgres:
+    container_name: test-chatwoot-postgres
     image: pgvector/pgvector:pg16
     environment:
       - POSTGRES_DB=chatwoot_production
@@ -9,27 +9,27 @@ services:
     volumes:
       - ./docker_data/postgres:/var/lib/postgresql/data
     ports:
-      - '127.0.0.1:5440:5432'
+      - '127.0.0.1:5439:5432'
     expose:
-      - 5440
+      - 5439
     networks:
       - shared-net
     restart: unless-stopped
 
-  redis:
+  test-chatwoot-redis:
     image: redis:alpine
-    container_name: agile-chatwoot-redis
+    container_name: test-chatwoot-redis
     restart: always
     networks:
       - shared-net
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     command: >
-      redis-server --requirepass "${REDIS_PASSWORD}" --port 6385 --appendonly yes
+      redis-server --requirepass "${REDIS_PASSWORD}" --port 6384 --appendonly yes
     volumes:
       - ./docker_data/redis:/data
     ports:
-      - '127.0.0.1:6385:6385'
+      - '127.0.0.1:6384:6384'
     env_file: .env
 
   web:
@@ -39,8 +39,8 @@ services:
       args:
         SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dummy}
     depends_on:
-      - postgres
-      - redis
+      - test-chatwoot-postgres
+      - test-chatwoot-redis
     environment:
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - CHATWOOT_BASE_URL=${CHATWOOT_BASE_URL}
@@ -57,18 +57,17 @@ services:
       - DB_POOL=25
       - DB_TIMEOUT=30000
       - DB_CONNECT_TIMEOUT=30
-      - POSTGRES_HOST=agile-chatwoot-postgres
+      - POSTGRES_HOST=test-chatwoot-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot_production
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6385
-      - ENABLE_ACCOUNT_SIGNUP=true
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@test-chatwoot-redis:6384
     ports:
-      - "0.0.0.0:3003:3003"
+      - "0.0.0.0:3002:3002"
     networks:
       - shared-net
-    container_name: agile-chatwoot-rails
+    container_name: test-chatwoot-rails
     restart: unless-stopped
 
   worker:
@@ -78,8 +77,8 @@ services:
       args:
         SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dummy}
     depends_on:
-      - postgres
-      - redis
+      - test-chatwoot-postgres
+      - test-chatwoot-redis
     environment:
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - NODE_ENV=production
@@ -93,14 +92,16 @@ services:
       - DB_POOL=25
       - DB_TIMEOUT=30000
       - DB_CONNECT_TIMEOUT=30
-      - POSTGRES_HOST=agile-chatwoot-postgres
+      - POSTGRES_HOST=test-chatwoot-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot_production
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6385
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@test-chatwoot-redis:6384
       - ENABLE_ACCOUNT_SIGNUP=true
-    container_name: agile-chatwoot-sidekiq
+    container_name: test-chatwoot-sidekiq
+    working_dir: /app
+    command: bundle exec sidekiq
     networks:
       - shared-net
     restart: always
