@@ -30,11 +30,23 @@ class SearchService
     @search_query ||= params[:q].to_s.strip
   end
 
+  def digits_only_query
+    return @digits_only_query if defined?(@digits_only_query)
+
+    digits = search_query.gsub(/\D/, '')
+    @digits_only_query = (digits.present? && digits != search_query) ? digits : nil
+  end
+
   def filter_conversations
+    phone_clause = 'contacts.phone_number ILIKE :search'
+    phone_clause += ' OR contacts.phone_number ILIKE :digits' if digits_only_query.present?
+    bindings = { search: "%#{search_query}%" }
+    bindings[:digits] = "%#{digits_only_query}%" if digits_only_query.present?
+
     conversations_query = current_account.conversations.where(inbox_id: accessable_inbox_ids)
                                          .joins('INNER JOIN contacts ON conversations.contact_id = contacts.id')
                                          .where("cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email
-                            ILIKE :search OR contacts.phone_number ILIKE :search OR contacts.identifier ILIKE :search", search: "%#{search_query}%")
+                            ILIKE :search OR #{phone_clause} OR contacts.identifier ILIKE :search", bindings)
 
     if current_account.feature_enabled?('advanced_search')
       conversations_query = apply_time_filter(conversations_query,
@@ -162,9 +174,13 @@ class SearchService
   end
 
   def filter_contacts
+    phone_clause = 'phone_number ILIKE :search'
+    phone_clause += ' OR phone_number ILIKE :digits' if digits_only_query.present?
+    bindings = { search: "%#{search_query}%" }
+    bindings[:digits] = "%#{digits_only_query}%" if digits_only_query.present?
+
     contacts_query = current_account.contacts.where(
-      "name ILIKE :search OR email ILIKE :search OR phone_number
-      ILIKE :search OR identifier ILIKE :search", search: "%#{search_query}%"
+      "name ILIKE :search OR email ILIKE :search OR #{phone_clause} OR identifier ILIKE :search", bindings
     )
 
     contacts_query = apply_time_filter(contacts_query, 'last_activity_at') if current_account.feature_enabled?('advanced_search')

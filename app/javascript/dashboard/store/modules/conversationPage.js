@@ -11,6 +11,7 @@ const state = {
     me: false,
     unassigned: false,
     all: false,
+    appliedFilters: false,
   },
 };
 

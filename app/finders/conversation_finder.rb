@@ -40,7 +40,7 @@ class ConversationFinder
   def perform
     set_up
 
-    mine_count, unassigned_count, all_count = set_count_for_all_conversations
+    mine_count, unassigned_count, all_count, = set_count_for_all_conversations
     assigned_count = all_count - unassigned_count
 
     filter_by_assignee_type
@@ -73,15 +73,6 @@ class ConversationFinder
   end
 
   private
-  
-  def excluded_content_filter
-    excluded = ENV['EXCLUDED_PENDING_CONTENT']&.split(',')&.map { |w| "'#{w.downcase.strip}'" }&.join(',')
-    excluded.present? ? "AND LOWER(messages.content) NOT IN (#{excluded})" : ''
-  end
-
-  def unread_message_filter
-    "0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id #{excluded_content_filter} ORDER BY created_at DESC LIMIT 1)"
-  end
 
   def set_up
     set_inboxes
@@ -170,13 +161,7 @@ class ConversationFinder
   def filter_by_status
     return if params[:status] == 'all'
 
-    if params[:status] == 'open' || params[:status].nil?
-      @conversations = @conversations.where(status: 0)
-        .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
-        .where(unread_message_filter)
-    else
-      @conversations = @conversations.where(status: params[:status])
-    end
+    @conversations = @conversations.where(status: params[:status] || DEFAULT_STATUS)
   end
 
   def filter_by_team
@@ -199,23 +184,11 @@ class ConversationFinder
   end
 
   def set_count_for_all_conversations
-    if ['open', 'pending', nil].include?(params[:status])
-      unread_scope = @conversations.where(status: 0)
-        .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
-        .where(unread_message_filter)
-
-      [
-        unread_scope.assigned_to(current_user).count,
-        unread_scope.unassigned.count,
-        unread_scope.count
-      ]
-    else
-      [
-        @conversations.assigned_to(current_user).count,
-        @conversations.unassigned.count,
-        @conversations.count
-      ]
-    end
+    [
+      @conversations.assigned_to(current_user).count,
+      @conversations.unassigned.count,
+      @conversations.count
+    ]
   end
 
   def current_page

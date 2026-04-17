@@ -20,23 +20,7 @@ class FilterService
 
   def perform; end
 
-  def excluded_content_filter
-    excluded = ENV['EXCLUDED_PENDING_CONTENT']&.split(',')&.map { |w| "'#{w.downcase.strip}'" }&.join(',')
-    excluded.present? ? "AND LOWER(messages.content) NOT IN (#{excluded})" : ''
-  end
-
-  def unread_message_filter
-    "0 = (SELECT message_type FROM messages WHERE messages.conversation_id = conversations.id #{excluded_content_filter} ORDER BY created_at DESC LIMIT 1)"
-  end
-
   def filter_operation(query_hash, current_index)
-    if query_hash[:attribute_key] == 'status' && query_hash[:values]&.include?('open')
-      @filter_values["value_#{current_index}"] = nil
-      return "(status = 0 
-          AND (agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at)
-          AND #{unread_message_filter})"
-    end
-
     case query_hash[:filter_operator]
     when 'equal_to', 'not_equal_to'
       @filter_values["value_#{current_index}"] = filter_values(query_hash)
@@ -61,11 +45,6 @@ class FilterService
   def filter_values(query_hash)
     attribute_key = query_hash['attribute_key']
     values = query_hash['values']
-
-    # For pending status, don't try to convert - let filter_operation handle it
-    if attribute_key == 'status' && values.include?('pending')
-      return ['pending']
-    end
 
     return conversation_status_values(values) if attribute_key == 'status'
     return conversation_priority_values(values) if attribute_key == 'priority'
@@ -218,11 +197,6 @@ class FilterService
 
   def query_builder(model_filters)
     @params[:payload].each_with_index do |query_hash, current_index|
-      if query_hash['attribute_key'] == 'status' && query_hash['values']&.include?('open')
-        @query_string += " (status = 0 AND (agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at) AND #{unread_message_filter}) #{query_hash[:query_operator]}"
-        next
-      end
-
       @query_string += " #{build_condition_query(model_filters, query_hash, current_index).strip}"
     end
     base_relation.where(@query_string, @filter_values.with_indifferent_access)
