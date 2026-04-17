@@ -29,7 +29,11 @@ class WebhookListener < BaseListener
     return unless message.webhook_sendable?
 
     payload = message.webhook_data.merge(event: __method__.to_s)
-    deliver_webhook_payloads(payload, inbox)
+    deliver_account_webhooks(payload, inbox.account)
+    # Outgoing Channel::Api messages fire their api_inbox_webhook synchronously from
+    # Api::SendOnApiService so the UI reflects the real delivery state. Skip the async
+    # fire here to avoid double-posting to the external webhook.
+    deliver_api_inbox_webhooks(payload, inbox) unless sync_api_delivery?(message)
   end
 
   def message_updated(event)
@@ -128,5 +132,12 @@ class WebhookListener < BaseListener
   def deliver_webhook_payloads(payload, inbox)
     deliver_account_webhooks(payload, inbox.account)
     deliver_api_inbox_webhooks(payload, inbox)
+  end
+
+  def sync_api_delivery?(message)
+    message.outgoing? &&
+      message.source_id.blank? &&
+      message.inbox.channel_type == 'Channel::Api' &&
+      message.inbox.channel.webhook_url.present?
   end
 end

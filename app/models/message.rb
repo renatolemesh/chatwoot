@@ -66,6 +66,7 @@ class Message < ApplicationRecord
   before_validation :prevent_message_flooding
   before_save :ensure_processed_message_content
   before_save :ensure_in_reply_to
+  before_create :mark_as_sending_for_api_channel
 
   validates :account_id, presence: true
   validates :inbox_id, presence: true
@@ -98,7 +99,7 @@ class Message < ApplicationRecord
     sticker: 11,
     voice_call: 12
   }
-  enum status: { sent: 0, delivered: 1, read: 2, failed: 3 }
+  enum status: { sent: 0, delivered: 1, read: 2, failed: 3, sending: 4 }
   # [:submitted_email, :items, :submitted_values] : Used for bot message types
   # [:email] : Used by conversation_continuity incoming email messages
   # [:in_reply_to] : Used to reply to a particular tweet in threads
@@ -305,6 +306,20 @@ class Message < ApplicationRecord
 
   def ensure_content_type
     self.content_type ||= Message.content_types[:text]
+  end
+
+  # Outgoing messages on Channel::Api with a webhook URL are delivered via a synchronous
+  # webhook call in SendReplyJob. Start them in :sending so the UI never shows "sent"
+  # before the webhook confirms delivery. External echoes (messages arriving with a
+  # source_id from the channel) are already delivered, so they stay as :sent.
+  def mark_as_sending_for_api_channel
+    return unless outgoing?
+    return if source_id.present?
+    return if status_changed? && status_was.present?
+    return unless inbox&.channel_type == 'Channel::Api'
+    return if inbox.channel.webhook_url.blank?
+
+    self.status = :sending
   end
 
   def execute_after_create_commit_callbacks

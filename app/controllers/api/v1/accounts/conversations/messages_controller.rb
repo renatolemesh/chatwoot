@@ -28,7 +28,11 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   def retry
     return if message.blank?
 
-    service = Messages::StatusUpdateService.new(message, 'sent')
+    # For Channel::Api inboxes with a webhook URL, delivery is synchronous and the
+    # message lives in :sending until the webhook responds. Picking that status
+    # up-front avoids a brief "sent" flicker in the UI before the retry lands.
+    target_status = sync_api_delivery_message? ? 'sending' : 'sent'
+    service = Messages::StatusUpdateService.new(message, target_status)
     service.perform
     message.update!(content_attributes: {})
     ::SendReplyJob.perform_later(message.id)
@@ -70,6 +74,14 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   def already_translated_content_available?
     message.translations.present? && message.translations[permitted_params[:target_language]].present?
+  end
+
+  def sync_api_delivery_message?
+    inbox = message.inbox
+    message.outgoing? &&
+      message.source_id.blank? &&
+      inbox.channel_type == 'Channel::Api' &&
+      inbox.channel.webhook_url.present?
   end
 
   # API inbox check
