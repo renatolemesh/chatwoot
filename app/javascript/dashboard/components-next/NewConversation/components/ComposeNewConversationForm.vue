@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { required, requiredIf } from '@vuelidate/validators';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
@@ -219,6 +219,16 @@ const handleInboxAction = ({ value, action, channelType, medium, ...rest }) => {
   showInboxesDropdown.value = false;
   state.attachedFiles = [];
 };
+
+watch(
+  contactableInboxesList,
+  newList => {
+    if (newList.length === 1 && !props.targetInbox) {
+      handleInboxAction(newList[0]);
+    }
+  },
+  { immediate: true }
+);
 
 const removeSignatureFromMessage = () => {
   // Always remove the signature from message content when inbox/contact is removed
