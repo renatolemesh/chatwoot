@@ -20,6 +20,35 @@ class FilterService
 
   def perform; end
 
+  def excluded_content_values
+    (ENV['EXCLUDED_PENDING_CONTENT'] || '').split(',').map { |w| w.downcase.strip }.reject(&:blank?)
+  end
+
+  def unread_conversation_ids
+    @unread_conversation_ids ||= begin
+      last_message_join = <<~SQL.squish
+        INNER JOIN LATERAL (
+          SELECT message_type, LOWER(content) AS lower_content
+          FROM messages
+          WHERE messages.conversation_id = conversations.id
+            AND messages.account_id = conversations.account_id
+          ORDER BY messages.created_at DESC
+          LIMIT 1
+        ) last_message ON TRUE
+      SQL
+
+      scope = @account.conversations
+                      .where(status: Conversation.statuses[:open])
+                      .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
+                      .joins(last_message_join)
+                      .where('last_message.message_type = 0')
+
+      excluded = excluded_content_values
+      scope = scope.where('last_message.lower_content IS NULL OR last_message.lower_content NOT IN (?)', excluded) if excluded.any?
+      scope.pluck('conversations.id')
+    end
+  end
+
   def filter_operation(query_hash, current_index)
     case query_hash[:filter_operator]
     when 'equal_to', 'not_equal_to'
@@ -197,6 +226,13 @@ class FilterService
 
   def query_builder(model_filters)
     @params[:payload].each_with_index do |query_hash, current_index|
+      if query_hash['attribute_key'] == 'status' && query_hash['values']&.include?('unread')
+        ids = unread_conversation_ids
+        id_list = ids.any? ? ids.join(',') : '0'
+        @query_string += " conversations.id IN (#{id_list}) #{query_hash[:query_operator]}"
+        next
+      end
+
       @query_string += " #{build_condition_query(model_filters, query_hash, current_index).strip}"
     end
     base_relation.where(@query_string, @filter_values.with_indifferent_access)

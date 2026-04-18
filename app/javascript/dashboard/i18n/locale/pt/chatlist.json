@@ -23,6 +23,9 @@
       "open": {
         "TEXT": "Abertas"
       },
+      "unread": {
+        "TEXT": "Não Lidas"
+      },
       "resolved": {
         "TEXT": "Resolvido"
       },

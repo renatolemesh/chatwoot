@@ -195,9 +195,13 @@ const matchesCondition = (conversationValue, filter) => {
   const isNullish =
     conversationValue === null || conversationValue === undefined;
 
-  const filterValue = Array.isArray(values)
+  let filterValue = Array.isArray(values)
     ? values.map(resolveValue)
     : resolveValue(values);
+
+  if (filter.attribute_key === 'status' && Array.isArray(filterValue)) {
+    filterValue = filterValue.map(v => (v === 'unread' ? 'open' : v));
+  }
 
   switch (filterOperator) {
     case 'equal_to':

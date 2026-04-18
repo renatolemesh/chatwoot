@@ -74,6 +74,33 @@ class ConversationFinder
 
   private
 
+  def excluded_content_values
+    (ENV['EXCLUDED_PENDING_CONTENT'] || '').split(',').map { |w| w.downcase.strip }.reject(&:blank?)
+  end
+
+  def filter_by_unread_status
+    last_message_join = <<~SQL.squish
+      INNER JOIN LATERAL (
+        SELECT message_type, LOWER(content) AS lower_content
+        FROM messages
+        WHERE messages.conversation_id = conversations.id
+          AND messages.account_id = conversations.account_id
+        ORDER BY messages.created_at DESC
+        LIMIT 1
+      ) last_message ON TRUE
+    SQL
+
+    scope = @conversations.unscope(:includes)
+                          .where(status: Conversation.statuses[:open])
+                          .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
+                          .joins(last_message_join)
+                          .where('last_message.message_type = 0')
+
+    excluded = excluded_content_values
+    scope = scope.where('last_message.lower_content IS NULL OR last_message.lower_content NOT IN (?)', excluded) if excluded.any?
+    @conversations.where(id: scope.pluck('conversations.id'))
+  end
+
   def set_up
     set_inboxes
     set_team
@@ -161,7 +188,11 @@ class ConversationFinder
   def filter_by_status
     return if params[:status] == 'all'
 
-    @conversations = @conversations.where(status: params[:status] || DEFAULT_STATUS)
+    if params[:status] == 'unread'
+      @conversations = filter_by_unread_status
+    else
+      @conversations = @conversations.where(status: params[:status] || DEFAULT_STATUS)
+    end
   end
 
   def filter_by_team
