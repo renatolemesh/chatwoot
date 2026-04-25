@@ -28,7 +28,7 @@ class FilterService
     @unread_conversation_ids ||= begin
       last_message_join = <<~SQL.squish
         INNER JOIN LATERAL (
-          SELECT message_type, LOWER(content) AS lower_content
+          SELECT message_type, LOWER(TRIM(content)) AS lower_content
           FROM messages
           WHERE messages.conversation_id = conversations.id
             AND messages.account_id = conversations.account_id

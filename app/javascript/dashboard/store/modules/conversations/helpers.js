@@ -7,9 +7,33 @@ export const findPendingMessageIndex = (chat, message) => {
   );
 };
 
+const getExcludedPendingContent = () => {
+  const raw = window?.globalConfig?.EXCLUDED_PENDING_CONTENT || '';
+  return raw
+    .split(',')
+    .map(w => w.trim().toLowerCase())
+    .filter(Boolean);
+};
+
+const isExcludedIncomingLastMessage = conversation => {
+  const excluded = getExcludedPendingContent();
+  if (!excluded.length) return false;
+
+  const messages = conversation.messages || [];
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || lastMessage.message_type !== 0) return false;
+
+  const content = (lastMessage.content || '').trim().toLowerCase();
+  return excluded.includes(content);
+};
+
 export const filterByStatus = (conversation, filterStatus) => {
   if (filterStatus === 'all') return true;
-  if (filterStatus === 'unread') return conversation.status === 'open';
+  if (filterStatus === 'unread') {
+    return (
+      conversation.status === 'open' && !isExcludedIncomingLastMessage(conversation)
+    );
+  }
   return conversation.status === filterStatus;
 };
 
