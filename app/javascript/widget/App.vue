@@ -54,7 +54,13 @@ export default {
       unreadMessageCount: 'conversation/getUnreadMessageCount',
       isWidgetStyleFlat: 'appConfig/isWidgetStyleFlat',
       showUnreadMessagesDialog: 'appConfig/getShowUnreadMessagesDialog',
+      widgetTemplate: 'appConfig/getWidgetTemplate',
     }),
+    templateClass() {
+      return this.widgetTemplate && this.widgetTemplate !== 'default'
+        ? `template--${this.widgetTemplate}`
+        : '';
+    },
     isIFrame() {
       return IFrameHelper.isIFrame();
     },
@@ -79,10 +85,12 @@ export default {
     },
   },
   mounted() {
-    const { websiteToken, locale, widgetColor } = window.chatwootWebChannel;
+    const { websiteToken, locale, widgetColor, widgetTemplate } =
+      window.chatwootWebChannel;
     this.setLocale(locale);
     this.setWidgetColor(widgetColor);
     this.setWidgetColorVariable(widgetColor);
+    this.setWidgetTemplate(widgetTemplate);
     setHeader(window.authToken);
     if (this.isIFrame) {
       this.registerListeners();
@@ -105,6 +113,7 @@ export default {
       'setAppConfig',
       'setReferrerHost',
       'setWidgetColor',
+      'setWidgetTemplate',
       'setBubbleVisibility',
       'setColorScheme',
     ]),
@@ -362,20 +371,23 @@ export default {
   <div
     v-if="!conversationSize && isFetchingList"
     class="flex items-center justify-center flex-1 h-full bg-n-background"
-    :class="{ dark: prefersDarkMode }"
+    :class="[templateClass, { dark: prefersDarkMode }]"
   >
     <Spinner size="" />
   </div>
   <div
     v-else
     class="flex flex-col justify-end h-full"
-    :class="{
-      'is-mobile': isMobile,
-      'is-widget-right': isRightAligned,
-      'is-bubble-hidden': hideMessageBubble,
-      'is-flat-design': isWidgetStyleFlat,
-      dark: prefersDarkMode,
-    }"
+    :class="[
+      templateClass,
+      {
+        'is-mobile': isMobile,
+        'is-widget-right': isRightAligned,
+        'is-bubble-hidden': hideMessageBubble,
+        'is-flat-design': isWidgetStyleFlat,
+        dark: prefersDarkMode,
+      },
+    ]"
   >
     <router-view />
   </div>

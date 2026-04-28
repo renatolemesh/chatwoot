@@ -66,6 +66,7 @@ const runSDK = ({ baseUrl, websiteToken }) => {
     locale,
     useBrowserLanguage: chatwootSettings.useBrowserLanguage || false,
     type: getBubbleView(chatwootSettings.type),
+    template: chatwootSettings.template || 'default',
     launcherTitle: chatwootSettings.launcherTitle || '',
     showPopoutButton: chatwootSettings.showPopoutButton || false,
     showUnreadMessagesDialog: chatwootSettings.showUnreadMessagesDialog ?? true,

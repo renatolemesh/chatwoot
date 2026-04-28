@@ -43,6 +43,8 @@ class AutomationRuleListener < BaseListener
     return if auto_reply_skip_events.include?(event_name) && ignore_auto_reply_event?(event)
 
     conversation = event.data[:conversation]
+    return if event_name == 'conversation_created' && conversation.messages.incoming.none?
+
     account = conversation.account
     changed_attributes = event.data[:changed_attributes]
 

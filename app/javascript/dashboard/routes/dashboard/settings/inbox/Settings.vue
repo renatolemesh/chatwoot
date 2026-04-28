@@ -489,6 +489,7 @@ export default {
           business_name: this.businessName || null,
           channel: {
             widget_color: this.inbox.widget_color,
+            widget_template: this.inbox.widget_template || 'default',
             website_url: this.channelWebsiteUrl,
             webhook_url: this.webhookUrl,
             welcome_title: this.channelWelcomeTitle || '',
@@ -861,6 +862,32 @@ export default {
               </SettingsFieldSection>
               <SettingsFieldSection
                 :label="
+                  $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_TEMPLATE.LABEL')
+                "
+                :help-text="
+                  $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_TEMPLATE.HELP_TEXT')
+                "
+              >
+                <SelectInput
+                  v-model="inbox.widget_template"
+                  :options="[
+                    {
+                      value: 'default',
+                      label: $t(
+                        'INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_TEMPLATE.DEFAULT'
+                      ),
+                    },
+                    {
+                      value: 'modern',
+                      label: $t(
+                        'INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_TEMPLATE.MODERN'
+                      ),
+                    },
+                  ]"
+                />
+              </SettingsFieldSection>
+              <SettingsFieldSection
+                :label="
                   $t('INBOX_MGMT.WIDGET_BUILDER.WIDGET_OPTIONS.WIDGET_BUBBLE')
                 "
               >
@@ -1137,6 +1164,7 @@ export default {
                 :widget-bubble-position="widgetBubblePosition"
                 :widget-bubble-launcher-title="widgetBubbleLauncherTitle"
                 :widget-bubble-type="widgetBubbleType"
+                :widget-template="inbox.widget_template"
                 :web-widget-script="inbox.web_widget_script"
               />
             </div>

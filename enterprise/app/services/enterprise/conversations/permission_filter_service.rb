@@ -30,8 +30,10 @@ module Enterprise::Conversations::PermissionFilterService
   end
 
   def filter_unassigned_and_mine
+    user_team_ids = user.teams.where(account_id: account.id).pluck(:id)
     mine = accessible_conversations.assigned_to(user)
     unassigned = accessible_conversations.unassigned
+                                         .where('conversations.team_id IN (?) OR conversations.team_id IS NULL', user_team_ids)
 
     Conversation.from("(#{mine.to_sql} UNION #{unassigned.to_sql}) as conversations")
                 .where(account_id: account.id)

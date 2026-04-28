@@ -119,6 +119,12 @@
           "LABEL": "Widget Color",
           "PLACEHOLDER": "Update the widget color used in widget"
         },
+        "WIDGET_TEMPLATE": {
+          "LABEL": "Widget Template",
+          "HELP_TEXT": "Choose a visual template for the live chat widget",
+          "DEFAULT": "Default",
+          "MODERN": "Modern"
+        },
         "SUBMIT_BUTTON": "Create inbox",
         "API": {
           "ERROR_MESSAGE": "We were not able to create a website channel, please try again"

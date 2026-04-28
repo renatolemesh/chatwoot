@@ -52,6 +52,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  widgetTemplate: {
+    type: String,
+    default: 'default',
+  },
   webWidgetScript: {
     type: String,
     default: '',
@@ -90,6 +94,9 @@ const widgetScript = computed(() => {
     type: props.widgetBubbleType,
     launcherTitle: props.widgetBubbleLauncherTitle,
   };
+  if (props.widgetTemplate && props.widgetTemplate !== 'default') {
+    options.template = props.widgetTemplate;
+  }
 
   const script = props.webWidgetScript;
   return (

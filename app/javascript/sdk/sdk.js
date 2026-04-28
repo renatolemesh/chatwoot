@@ -292,4 +292,28 @@ export const SDK_CSS = `
 .woot-hidden {
   display: none !important;
 }
+
+/* Modern template overrides */
+.woot-widget-bubble.woot-widget-bubble--template-modern {
+  height: 68px;
+  width: 68px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18), 0 0 0 4px rgba(255, 255, 255, 0.6) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.woot-widget-bubble.woot-widget-bubble--template-modern:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22), 0 0 0 4px rgba(255, 255, 255, 0.7) !important;
+}
+
+.woot-widget-holder.woot-widget-holder--template-modern {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  border-radius: 24px;
+}
+
+@media only screen and (min-width: 667px) {
+  .woot-widget-holder.woot-widget-holder--template-modern {
+    border-radius: 24px;
+  }
+}
 `;

@@ -79,6 +79,9 @@ export const IFrameHelper = {
     if (isFlatWidgetStyle(window.$chatwoot.widgetStyle)) {
       holderClassName += ` woot-widget-holder--flat`;
     }
+    if (window.$chatwoot.template && window.$chatwoot.template !== 'default') {
+      holderClassName += ` woot-widget-holder--template-${window.$chatwoot.template}`;
+    }
 
     addClasses(widgetHolder, holderClassName);
     widgetHolder.id = 'cw-widget-holder';
@@ -163,6 +166,7 @@ export const IFrameHelper = {
         hideMessageBubble: window.$chatwoot.hideMessageBubble,
         showPopoutButton: window.$chatwoot.showPopoutButton,
         widgetStyle: window.$chatwoot.widgetStyle,
+        widgetTemplate: window.$chatwoot.template,
         darkMode: window.$chatwoot.darkMode,
         showUnreadMessagesDialog: window.$chatwoot.showUnreadMessagesDialog,
         campaignsSnoozedTill,
@@ -313,6 +317,12 @@ export const IFrameHelper = {
     if (isFlatWidgetStyle(window.$chatwoot.widgetStyle)) {
       className += ' woot-widget-bubble--flat';
       closeBtnClassName += ' woot-widget-bubble--flat';
+    }
+
+    if (window.$chatwoot.template && window.$chatwoot.template !== 'default') {
+      const templateClass = `woot-widget-bubble--template-${window.$chatwoot.template}`;
+      className += ` ${templateClass}`;
+      closeBtnClassName += ` ${templateClass}`;
     }
 
     if (isWidgetColorLighter(widgetColor)) {

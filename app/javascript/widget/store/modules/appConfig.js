@@ -4,6 +4,7 @@ import {
   SET_REFERRER_HOST,
   SET_WIDGET_APP_CONFIG,
   SET_WIDGET_COLOR,
+  SET_WIDGET_TEMPLATE,
   TOGGLE_WIDGET_OPEN,
   SET_ROUTE_UPDATE_STATE,
 } from '../types';
@@ -19,6 +20,7 @@ const state = {
   showPopoutButton: false,
   widgetColor: '',
   widgetStyle: 'standard',
+  widgetTemplate: 'default',
   darkMode: 'light',
   isUpdatingRoute: false,
   welcomeTitle: '',
@@ -36,6 +38,7 @@ export const getters = {
   getHideMessageBubble: $state => $state.hideMessageBubble,
   getIsWidgetOpen: $state => $state.isWidgetOpen,
   getWidgetColor: $state => $state.widgetColor,
+  getWidgetTemplate: $state => $state.widgetTemplate,
   getReferrerHost: $state => $state.referrerHost,
   isWidgetStyleFlat: $state => $state.widgetStyle === 'flat',
   darkMode: $state => $state.darkMode,
@@ -59,6 +62,7 @@ export const actions = {
       hideMessageBubble,
       showUnreadMessagesDialog,
       widgetStyle = 'rounded',
+      widgetTemplate = 'default',
       darkMode = 'light',
       welcomeTitle = '',
       welcomeDescription = '',
@@ -75,6 +79,7 @@ export const actions = {
       showPopoutButton: !!showPopoutButton,
       showUnreadMessagesDialog: !!showUnreadMessagesDialog,
       widgetStyle,
+      widgetTemplate,
       darkMode,
       welcomeTitle,
       welcomeDescription,
@@ -90,6 +95,9 @@ export const actions = {
   },
   setWidgetColor({ commit }, widgetColor) {
     commit(SET_WIDGET_COLOR, widgetColor);
+  },
+  setWidgetTemplate({ commit }, widgetTemplate) {
+    commit(SET_WIDGET_TEMPLATE, widgetTemplate);
   },
   setColorScheme({ commit }, darkMode) {
     commit(SET_COLOR_SCHEME, darkMode);
@@ -115,6 +123,7 @@ export const mutations = {
     $state.position = data.position;
     $state.hideMessageBubble = data.hideMessageBubble;
     $state.widgetStyle = data.widgetStyle;
+    $state.widgetTemplate = data.widgetTemplate || 'default';
     $state.darkMode = data.darkMode;
     $state.locale = data.locale || $state.locale;
     $state.showUnreadMessagesDialog = data.showUnreadMessagesDialog;
@@ -131,6 +140,9 @@ export const mutations = {
   },
   [SET_WIDGET_COLOR]($state, widgetColor) {
     $state.widgetColor = widgetColor;
+  },
+  [SET_WIDGET_TEMPLATE]($state, widgetTemplate) {
+    $state.widgetTemplate = widgetTemplate || 'default';
   },
   [SET_REFERRER_HOST]($state, referrerHost) {
     $state.referrerHost = referrerHost;
