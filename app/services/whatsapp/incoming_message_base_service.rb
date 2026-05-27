@@ -65,9 +65,26 @@ class Whatsapp::IncomingMessageBaseService
     message = messages_data.first
     log_error(message) && return if error_webhook_event?(message)
 
+    # Meta sends the moment the message was produced as a Unix epoch (seconds)
+    # in `timestamp`. Capture it once so create_message can stamp the row with
+    # the real send time instead of "now" — important when Meta retries a
+    # webhook hours after the original event.
+    @whatsapp_message_timestamp = parse_whatsapp_timestamp(message[:timestamp] || message['timestamp'])
+
     process_in_reply_to(message)
 
     message_type == 'contacts' ? create_contact_messages(message) : create_regular_message(message)
+  end
+
+  def parse_whatsapp_timestamp(raw)
+    return nil if raw.blank?
+
+    secs = raw.is_a?(String) ? raw.to_i : raw.to_i
+    return nil if secs <= 0
+
+    Time.zone.at(secs)
+  rescue StandardError
+    nil
   end
 
   def create_contact_messages(message)
@@ -189,6 +206,24 @@ class Whatsapp::IncomingMessageBaseService
       source_id: (source_id || message[:id]).to_s,
       content_attributes: content_attrs
     )
+
+    apply_whatsapp_timestamp
+  end
+
+  # When Meta retries a webhook (e.g. our endpoint was unreachable), the row
+  # would otherwise be stamped with the retry-arrival time. Use the original
+  # message timestamp from the payload so the agent UI shows the real moment
+  # the contact sent the message. We also stash the actual arrival time in
+  # additional_attributes['received_at'] so Conversation#unread_messages can
+  # still flag the message as unread (created_at would otherwise be older
+  # than agent_last_seen_at and hide the badge).
+  def apply_whatsapp_timestamp
+    return if @whatsapp_message_timestamp.blank?
+
+    @message.created_at = @whatsapp_message_timestamp
+    @message.updated_at = @whatsapp_message_timestamp if @message.updated_at.blank? || @message.updated_at < @whatsapp_message_timestamp
+    @message.additional_attributes ||= {}
+    @message.additional_attributes['received_at'] = Time.current.iso8601
   end
 
   def attach_contact(contact)

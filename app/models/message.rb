@@ -443,8 +443,16 @@ class Message < ApplicationRecord
   end
 
   def set_conversation_activity
+    # When a message is backstamped (Meta retry, redirector retry), created_at
+    # is in the past and would push the conversation down the Latest sort —
+    # the agent never sees the unread badge in the inbox list. Use the actual
+    # arrival time we stashed in additional_attributes['received_at'] so the
+    # conversation surfaces at the top. Falls back to created_at for normal
+    # real-time messages.
+    received = additional_attributes&.dig('received_at')
+    activity_at = (Time.zone.parse(received.to_s) rescue nil) || created_at
     # rubocop:disable Rails/SkipsModelValidations
-    conversation.update_columns(last_activity_at: created_at)
+    conversation.update_columns(last_activity_at: activity_at)
     # rubocop:enable Rails/SkipsModelValidations
   end
 

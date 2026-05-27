@@ -27,6 +27,7 @@ class Messages::MessageBuilder
     # When the message has no quoted content, it will just be rendered as a regular message
     # The frontend is equipped to handle this case
     process_email_content
+    apply_original_created_at
     @message.save!
     @message
   end
@@ -109,6 +110,39 @@ class Messages::MessageBuilder
 
   def external_created_at
     @params[:external_created_at].present? ? { external_created_at: @params[:external_created_at] } : {}
+  end
+
+  # When the caller (e.g. webhook-redirector retrying after a failure) tells us
+  # the real moment WhatsApp produced the message, stamp the row's created_at
+  # with that time so the agent UI shows the original time, not the delivery
+  # time. Accepts either external_created_at (Chatwoot convention: unix epoch
+  # seconds) or a top-level created_at (ISO8601). Silently ignored if the
+  # value can't be parsed.
+  def apply_original_created_at
+    raw = @params[:created_at].presence || @params[:external_created_at].presence
+    return if raw.blank?
+
+    parsed =
+      case raw
+      when Integer then Time.zone.at(raw)
+      when String
+        if raw.match?(/\A\d+\z/)
+          Time.zone.at(raw.to_i)
+        else
+          Time.zone.parse(raw) rescue nil
+        end
+      when Time, ActiveSupport::TimeWithZone, DateTime then raw
+      end
+
+    return if parsed.blank?
+
+    @message.created_at = parsed
+    @message.updated_at = parsed if @message.updated_at.blank? || @message.updated_at < parsed
+    # Stash actual arrival time so unread tracking still works — see
+    # Conversation#unread_messages, which compares received_at (fallback
+    # created_at) against agent_last_seen_at.
+    @message.additional_attributes ||= {}
+    @message.additional_attributes['received_at'] = Time.current.iso8601
   end
 
   def automation_rule_id

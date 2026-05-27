@@ -165,11 +165,23 @@ class Conversation < ApplicationRecord
   end
 
   def unread_messages
-    agent_last_seen_at.present? ? messages.created_since(agent_last_seen_at) : messages
+    agent_last_seen_at.present? ? messages_arrived_since(agent_last_seen_at) : messages
   end
 
   def assignee_unread_messages
-    assignee_last_seen_at.present? ? messages.created_since(assignee_last_seen_at) : messages
+    assignee_last_seen_at.present? ? messages_arrived_since(assignee_last_seen_at) : messages
+  end
+
+  # Late-arriving webhooks (Meta retries, redirector retries) backstamp
+  # created_at to the original send time but stash the actual arrival time in
+  # additional_attributes['received_at']. Compare against that when present so
+  # the unread badge shows even when created_at is older than the agent's last
+  # visit. Falls back to created_at for messages without received_at.
+  def messages_arrived_since(timestamp)
+    messages.where(
+      "COALESCE((messages.additional_attributes->>'received_at')::timestamptz, messages.created_at) > ?",
+      timestamp
+    )
   end
 
   def unread_incoming_messages
