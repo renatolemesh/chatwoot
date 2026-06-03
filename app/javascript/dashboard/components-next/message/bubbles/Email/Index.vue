@@ -118,7 +118,11 @@ const handleSeeOriginal = () => {
         'border-b border-n-slate-8/20': isOutgoing,
       }"
     />
-    <section ref="contentContainer" class="p-3">
+    <section
+      ref="contentContainer"
+      class="p-3"
+      :class="{ 'email-render-canvas': isIncoming }"
+    >
       <div
         :class="{
           'max-h-[400px] overflow-hidden relative': !isExpanded && isExpandable,
@@ -211,6 +215,27 @@ const handleSeeOriginal = () => {
 </template>
 
 <style lang="scss">
+// Emails are authored for light backgrounds and carry their own (often dark) text
+// colors. In dark mode those land on the dark bubble and become unreadable, so we
+// render the email body on a light canvas by reverting the slate color scale to its
+// light-theme values for this subtree. Everything inside (prose text, the expand
+// gradient, buttons, gmail chips) then renders exactly as it does in light mode.
+.dark .email-render-canvas {
+  --slate-1: 252 252 253;
+  --slate-2: 249 249 251;
+  --slate-3: 240 240 243;
+  --slate-4: 232 232 236;
+  --slate-5: 224 225 230;
+  --slate-6: 217 217 224;
+  --slate-7: 205 206 214;
+  --slate-8: 185 187 198;
+  --slate-9: 139 141 152;
+  --slate-10: 128 131 141;
+  --slate-11: 96 100 108;
+  --slate-12: 28 32 36;
+  @apply bg-n-slate-1 rounded-md;
+}
+
 // Tailwind resets break the rendering of google drive link in Gmail messages
 // This fixes it using https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors
 
