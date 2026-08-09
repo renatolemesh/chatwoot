@@ -30,6 +30,7 @@ const getters = {
 
     const permissions = getUserPermissions(currentUser, currentAccountId);
     const userRole = getUserRole(currentUser, currentAccountId);
+    const userTeamIds = rootGetters['teams/getMyTeams'].map(team => team.id);
 
     return allConversations
       .filter(conversation => {
@@ -41,7 +42,8 @@ const getters = {
           conversation,
           userRole,
           permissions,
-          currentUserId
+          currentUserId,
+          userTeamIds
         );
 
         return matchesFilterResult && allowedForRole;
@@ -109,6 +111,7 @@ const getters = {
 
     const permissions = getUserPermissions(currentUser, currentAccountId);
     const userRole = getUserRole(currentUser, currentAccountId);
+    const userTeamIds = rootGetters['teams/getMyTeams'].map(team => team.id);
 
     return _state.allConversations.filter(conversation => {
       const shouldFilter = applyPageFilters(conversation, activeFilters);
@@ -116,7 +119,8 @@ const getters = {
         conversation,
         userRole,
         permissions,
-        currentUserId
+        currentUserId,
+        userTeamIds
       );
 
       return shouldFilter && allowedForRole;

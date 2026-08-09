@@ -19,7 +19,14 @@ module Enterprise::ConversationPolicy
   def permits_unassigned_manage?(permissions)
     return false unless permissions.include?('conversation_unassigned_manage')
 
-    unassigned_conversation? || assigned_to_user?
+    unassigned_conversation? || assigned_to_user? || team_assigned_conversation?(permissions)
+  end
+
+  def team_assigned_conversation?(permissions)
+    return false unless permissions.include?('conversation_team_manage')
+    return false if record.team_id.blank?
+
+    user.teams.where(account_id: account&.id).exists?(id: record.team_id)
   end
 
   def permits_participating?(permissions)

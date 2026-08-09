@@ -101,7 +101,8 @@ export const applyRoleFilter = (
   conversation,
   role,
   permissions,
-  currentUserId
+  currentUserId,
+  userTeamIds = []
 ) => {
   // the role === "agent" check is typically not correct on it's own
   // the backend handles this by checking the custom_role_id at the user model
@@ -122,7 +123,10 @@ export const applyRoleFilter = (
 
   // Check unassigned management permission
   if (permissions.includes('conversation_unassigned_manage')) {
-    return isUnassigned || isAssignedToUser;
+    const isAssignedToUserTeam =
+      permissions.includes('conversation_team_manage') &&
+      userTeamIds.includes(conversation.meta.team?.id);
+    return isUnassigned || isAssignedToUser || isAssignedToUserTeam;
   }
 
   // Check participating conversation management permission
