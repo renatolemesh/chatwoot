@@ -107,7 +107,7 @@ class DataImportJob < ApplicationJob
     utf8_data = raw_data.force_encoding('UTF-8')
     clean_data = utf8_data.valid_encoding? ? utf8_data : utf8_data.encode('UTF-16le', invalid: :replace, replace: '').encode('UTF-8')
 
-    CSV.new(StringIO.new(clean_data), headers: true)
+    CSV.new(StringIO.new(clean_data.delete_prefix("\uFEFF")), headers: true)
   end
 
   def with_import_file
