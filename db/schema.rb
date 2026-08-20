@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_26_153427) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_20_150000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -681,9 +681,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_153427) do
     t.datetime "waiting_since"
     t.text "cached_label_list"
     t.bigint "assignee_agent_bot_id"
+    t.integer "last_message_type"
+    t.text "last_message_content"
+    t.datetime "last_message_at"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
+    t.index ["account_id", "inbox_id"], name: "index_conversations_on_unread_filter", where: "((status = 0) AND (last_message_type = 0) AND ((agent_last_seen_at IS NULL) OR (agent_last_seen_at < last_activity_at)))"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_conversations_on_assignee_id_and_account_id"
     t.index ["campaign_id"], name: "index_conversations_on_campaign_id"
@@ -980,11 +984,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_153427) do
     t.text "processed_message_content"
     t.jsonb "sentiment", default: {}
     t.index "((additional_attributes -> 'campaign_id'::text))", name: "index_messages_on_additional_attributes_campaign_id", using: :gin
-    t.index ["account_id", "content_type", "created_at"], name: "idx_messages_account_content_created"
     t.index ["account_id", "created_at", "message_type"], name: "index_messages_on_account_created_type"
     t.index ["account_id", "inbox_id"], name: "index_messages_on_account_id_and_inbox_id"
     t.index ["account_id"], name: "index_messages_on_account_id"
     t.index ["content"], name: "index_messages_on_content", opclass: :gin_trgm_ops, using: :gin
+    t.index ["conversation_id", "account_id", "created_at"], name: "idx_messages_conv_acct_created_desc", order: { created_at: :desc }
     t.index ["conversation_id", "account_id", "message_type", "created_at"], name: "index_messages_on_conversation_account_type_created"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
     t.index ["created_at"], name: "index_messages_on_created_at"

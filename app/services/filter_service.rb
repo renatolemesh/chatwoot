@@ -26,25 +26,14 @@ class FilterService
 
   def unread_conversation_ids
     @unread_conversation_ids ||= begin
-      last_message_join = <<~SQL.squish
-        INNER JOIN LATERAL (
-          SELECT message_type, LOWER(TRIM(content)) AS lower_content
-          FROM messages
-          WHERE messages.conversation_id = conversations.id
-            AND messages.account_id = conversations.account_id
-          ORDER BY messages.created_at DESC
-          LIMIT 1
-        ) last_message ON TRUE
-      SQL
-
+      # Mesmo espelho usado por ConversationFinder#filter_by_unread_status.
       scope = @account.conversations
                       .where(status: Conversation.statuses[:open])
                       .where('agent_last_seen_at IS NULL OR agent_last_seen_at < last_activity_at')
-                      .joins(last_message_join)
-                      .where('last_message.message_type = 0')
+                      .where(last_message_type: Message.message_types[:incoming])
 
       excluded = excluded_content_values
-      scope = scope.where('last_message.lower_content IS NULL OR last_message.lower_content NOT IN (?)', excluded) if excluded.any?
+      scope = scope.where('last_message_content IS NULL OR last_message_content NOT IN (?)', excluded) if excluded.any?
       scope.pluck('conversations.id')
     end
   end

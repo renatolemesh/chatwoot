@@ -136,7 +136,20 @@ class Message < ApplicationRecord
   after_create_commit :execute_after_create_commit_callbacks
 
   after_update_commit :dispatch_update_event
+  after_update_commit :sync_conversation_last_message, if: :last_message_fields_changed?
   after_commit :reindex_for_search, if: :should_index?, on: [:create, :update]
+
+  LAST_MESSAGE_CONTENT_LIMIT = 512
+
+  # Normaliza o conteudo do jeito que conversations.last_message_content guarda.
+  # O valor so e comparado por igualdade contra as palavras de
+  # EXCLUDED_PENDING_CONTENT, que sao curtas, entao cortar em 512 evita
+  # duplicar mensagens longas (content aceita ate 150k) na tabela conversations.
+  def self.normalize_last_message_content(value)
+    return if value.nil?
+
+    value.strip.downcase[0, LAST_MESSAGE_CONTENT_LIMIT]
+  end
 
   def channel_token
     @token ||= inbox.channel.try(:page_access_token)
@@ -454,6 +467,30 @@ class Message < ApplicationRecord
     # rubocop:disable Rails/SkipsModelValidations
     conversation.update_columns(last_activity_at: activity_at)
     # rubocop:enable Rails/SkipsModelValidations
+    sync_conversation_last_message
+  end
+
+  # Espelha a ultima mensagem da conversa em conversations.last_message_*.
+  # Antes disso o filtro de "nao lidas" descobria essa informacao com um JOIN
+  # LATERAL em messages para cada conversa aberta, a cada requisicao.
+  #
+  # O guard em last_message_at existe pelo mesmo motivo do backstamp acima: uma
+  # mensagem que chega com created_at no passado (retry da Meta, do redirector)
+  # nao pode sobrescrever a ultima mensagem de verdade da conversa.
+  def sync_conversation_last_message
+    # rubocop:disable Rails/SkipsModelValidations
+    Conversation.where(id: conversation_id)
+                .where('last_message_at IS NULL OR last_message_at <= ?', created_at)
+                .update_all(
+                  last_message_type: Message.message_types[message_type],
+                  last_message_content: Message.normalize_last_message_content(content),
+                  last_message_at: created_at
+                )
+    # rubocop:enable Rails/SkipsModelValidations
+  end
+
+  def last_message_fields_changed?
+    saved_change_to_content? || saved_change_to_message_type?
   end
 
   def reindex_for_search
