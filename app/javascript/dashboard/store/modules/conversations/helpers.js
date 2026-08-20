@@ -118,15 +118,21 @@ export const applyRoleFilter = (
   }
 
   const conversationAssignee = conversation.meta.assignee;
+  const conversationTeamId = conversation.meta.team?.id;
   const isUnassigned = !conversationAssignee;
   const isAssignedToUser = conversationAssignee?.id === currentUserId;
+  const isInUserTeam = userTeamIds.includes(conversationTeamId);
+
+  // Team management is an additive flag on top of any other permission
+  if (permissions.includes('conversation_team_manage') && isInUserTeam) {
+    return true;
+  }
 
   // Check unassigned management permission
   if (permissions.includes('conversation_unassigned_manage')) {
-    const isAssignedToUserTeam =
-      permissions.includes('conversation_team_manage') &&
-      userTeamIds.includes(conversation.meta.team?.id);
-    return isUnassigned || isAssignedToUser || isAssignedToUserTeam;
+    const isUnassignedInUserScope =
+      isUnassigned && (!conversationTeamId || isInUserTeam);
+    return isUnassignedInUserScope || isAssignedToUser;
   }
 
   // Check participating conversation management permission

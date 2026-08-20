@@ -800,6 +800,8 @@ onMounted(() => {
   setFiltersFromUISettings();
   store.dispatch('setChatStatusFilter', activeStatus.value);
   store.dispatch('setChatSortFilter', activeSortBy.value);
+  // teams are needed to filter conversations by the team permission
+  store.dispatch('teams/get');
   resetAndFetchData();
   if (hasActiveFolders.value) {
     store.dispatch('campaigns/get');
