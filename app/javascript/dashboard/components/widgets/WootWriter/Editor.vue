@@ -56,6 +56,7 @@ import {
   insertAtCursor,
   removeSignature as removeSignatureHelper,
   scrollCursorIntoView,
+  SIGNATURE_POSITIONS,
   setURLWithQueryAndSize,
   getFormattingForEditor,
   getSelectionCoords,
@@ -163,8 +164,11 @@ const createState = (content, placeholder, plugins = [], methods = {}) => {
   });
 };
 
-const { isEditorHotKeyEnabled, fetchSignatureFlagFromUISettings } =
-  useUISettings();
+const {
+  isEditorHotKeyEnabled,
+  fetchSignatureFlagFromUISettings,
+  signaturePosition,
+} = useUISettings();
 
 const typingIndicator = createTypingIndicator(
   () => emit('typingOn'),
@@ -354,7 +358,8 @@ function isBodyEmpty(content) {
     ? removeSignatureHelper(
         content,
         props.signature,
-        effectiveChannelType.value
+        effectiveChannelType.value,
+        signaturePosition.value
       )
     : content;
 
@@ -363,6 +368,13 @@ function isBodyEmpty(content) {
 }
 
 function handleEmptyBodyWithSignature() {
+  // when the signature is on top, the body already starts right after it,
+  // so we only need to move the cursor to the end
+  if (signaturePosition.value === SIGNATURE_POSITIONS.TOP) {
+    focusEditorInputField('end');
+    return;
+  }
+
   const { schema, tr, doc } = state;
 
   const isEmptyParagraph = node =>
@@ -443,7 +455,8 @@ function addSignature() {
   content = appendSignature(
     content,
     props.signature,
-    effectiveChannelType.value
+    effectiveChannelType.value,
+    signaturePosition.value
   );
   // need to reload first, ensuring that the editorView is updated
   reloadState(content);
@@ -459,7 +472,8 @@ function removeSignature() {
   content = removeSignatureHelper(
     content,
     props.signature,
-    effectiveChannelType.value
+    effectiveChannelType.value,
+    signaturePosition.value
   );
   // reload the state, ensuring that the editorView is updated
   reloadState(content);

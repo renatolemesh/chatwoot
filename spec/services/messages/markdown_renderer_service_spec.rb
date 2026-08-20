@@ -476,19 +476,19 @@ RSpec.describe Messages::MarkdownRendererService, type: :service do
     context 'when channel is Channel::Api' do
       let(:channel_type) { 'Channel::Api' }
 
-      it 'preserves markdown as-is' do
+      it 'converts markdown to WhatsApp formatting' do
         content = '**bold** _italic_ `code`'
         result = described_class.new(content, channel_type).render
-        expect(result).to eq('**bold** _italic_ `code`')
+        expect(result).to eq('*bold* _italic_ `code`')
       end
 
-      it 'preserves links with markdown syntax' do
+      it 'converts links to plain urls' do
         content = '[Click here](https://example.com)'
         result = described_class.new(content, channel_type).render
-        expect(result).to eq('[Click here](https://example.com)')
+        expect(result).to eq('https://example.com')
       end
 
-      it 'preserves lists with markdown syntax' do
+      it 'preserves lists' do
         content = "- Item 1\n- Item 2"
         result = described_class.new(content, channel_type).render
         expect(result).to eq("- Item 1\n- Item 2")

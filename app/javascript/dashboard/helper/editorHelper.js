@@ -79,6 +79,15 @@ export function stripUnsupportedMarkdown(
 export const SIGNATURE_DELIMITER = '--';
 
 /**
+ * The positions the signature can be placed in, relative to the message body.
+ * @type {Object}
+ */
+export const SIGNATURE_POSITIONS = {
+  TOP: 'top',
+  BOTTOM: 'bottom',
+};
+
+/**
  * Parse and Serialize the markdown text to remove any extra spaces or new lines
  */
 export function cleanSignature(signature) {
@@ -114,19 +123,30 @@ function appendDelimiter(signature) {
 }
 
 /**
- * Check if there's an unedited signature at the end of the body
+ * Check if there's an unedited signature at the expected end of the body
  * If there is, return the index of the signature, If there isn't, return -1
  *
  * @param {string} body - The body to search for the signature.
  * @param {string} signature - The signature to search for.
- * @returns {number} - The index of the last occurrence of the signature in the body, or -1 if not found.
+ * @param {string} position - Optional. Where the signature is placed, top or bottom.
+ * @returns {number} - The index of the signature in the body, or -1 if not found.
  */
-export function findSignatureInBody(body, signature) {
-  const trimmedBody = body.trimEnd();
+export function findSignatureInBody(
+  body,
+  signature,
+  position = SIGNATURE_POSITIONS.BOTTOM
+) {
   const cleanedSignature = cleanSignature(signature);
 
+  if (position === SIGNATURE_POSITIONS.TOP) {
+    // check if body starts with signature
+    return body.trimStart().startsWith(cleanedSignature)
+      ? body.indexOf(cleanedSignature)
+      : -1;
+  }
+
   // check if body ends with signature
-  if (trimmedBody.endsWith(cleanedSignature)) {
+  if (body.trimEnd().endsWith(cleanedSignature)) {
     return body.lastIndexOf(cleanedSignature);
   }
 
@@ -158,17 +178,28 @@ export function getEffectiveChannelType(channelType, medium) {
  * @param {string} signature - The signature to append.
  * @param {string} channelType - Optional. The effective channel type to determine supported formatting.
  *                               For Twilio channels, pass the result of getEffectiveChannelType().
+ * @param {string} position - Optional. Where to place the signature, top or bottom.
+ *                            The top position is added as a single line above the body, without the delimiter.
  * @returns {string} - The body with the signature appended.
  */
-export function appendSignature(body, signature, channelType) {
+export function appendSignature(
+  body,
+  signature,
+  channelType,
+  position = SIGNATURE_POSITIONS.BOTTOM
+) {
   // Strip only unsupported formatting based on channel capabilities
   const preparedSignature = channelType
     ? stripUnsupportedMarkdown(signature, channelType)
     : signature;
   const cleanedSignature = cleanSignature(preparedSignature);
   // if signature is already present, return body
-  if (findSignatureInBody(body, cleanedSignature) > -1) {
+  if (findSignatureInBody(body, cleanedSignature, position) > -1) {
     return body;
+  }
+
+  if (position === SIGNATURE_POSITIONS.TOP) {
+    return `${cleanedSignature}\n${body.trimStart()}`;
   }
 
   return `${body.trimEnd()}\n\n${appendDelimiter(cleanedSignature)}`;
@@ -181,9 +212,15 @@ export function appendSignature(body, signature, channelType) {
  * @param {string} body - The body to remove the signature from.
  * @param {string} signature - The signature to remove.
  * @param {string} channelType - Optional. The effective channel type for channel-specific stripping.
+ * @param {string} position - Optional. Where the signature is placed, top or bottom.
  * @returns {string} - The body with the signature removed.
  */
-export function removeSignature(body, signature, channelType) {
+export function removeSignature(
+  body,
+  signature,
+  channelType,
+  position = SIGNATURE_POSITIONS.BOTTOM
+) {
   // Build unique list of signature variants to try
   const channelStripped = channelType
     ? cleanSignature(stripUnsupportedMarkdown(signature, channelType))
@@ -194,20 +231,30 @@ export function removeSignature(body, signature, channelType) {
     cleanSignature(extractTextFromMarkdown(signature)),
   ].filter((sig, i, arr) => sig && arr.indexOf(sig) === i); // Remove nulls and duplicates
 
-  // Find the first matching signature
-  const signatureIndex = signaturesToTry.reduce(
-    (index, sig) => (index === -1 ? findSignatureInBody(body, sig) : index),
-    -1
+  // Find the first matching signature, we need the matched variant to know its length
+  const match = signaturesToTry.reduce(
+    (found, sig) =>
+      found.index > -1
+        ? found
+        : { index: findSignatureInBody(body, sig, position), signature: sig },
+    { index: -1, signature: '' }
   );
 
   // no need to trim the ends here, because it will simply be removed in the next method
   let newBody = body;
 
-  // if signature is present, remove it and trim it
-  // trimming will ensure any spaces or new lines before the signature are removed
-  // This means we will have the delimiter at the end
-  if (signatureIndex > -1) {
-    newBody = newBody.substring(0, signatureIndex).trimEnd();
+  if (match.index > -1) {
+    // if signature is present, remove it and trim it
+    // trimming will ensure any spaces or new lines around the signature are removed
+    // For the bottom position, this means we will have the delimiter at the end
+    newBody =
+      position === SIGNATURE_POSITIONS.TOP
+        ? newBody
+            .slice(match.index + match.signature.length)
+            // the editor serializes the line break after the signature as a markdown hard break
+            .replace(/^\\\n/, '')
+            .trimStart()
+        : newBody.substring(0, match.index).trimEnd();
   }
 
   // Remove delimiter if it's at the end

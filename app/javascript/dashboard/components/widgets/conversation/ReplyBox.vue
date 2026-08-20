@@ -96,6 +96,7 @@ export default {
       fetchSignatureFlagFromUISettings,
       setQuotedReplyFlagForInbox,
       fetchQuotedReplyFlagFromUISettings,
+      signaturePosition,
     } = useUISettings();
 
     const replyEditor = useTemplateRef('replyEditor');
@@ -108,6 +109,7 @@ export default {
       fetchSignatureFlagFromUISettings,
       setQuotedReplyFlagForInbox,
       fetchQuotedReplyFlagFromUISettings,
+      signaturePosition,
       replyEditor,
       copilot,
       shortcutKey,
@@ -632,8 +634,18 @@ export default {
         this.inbox?.medium || ''
       );
       return this.sendWithSignature
-        ? appendSignature(message, this.messageSignature, effectiveChannelType)
-        : removeSignature(message, this.messageSignature, effectiveChannelType);
+        ? appendSignature(
+            message,
+            this.messageSignature,
+            effectiveChannelType,
+            this.signaturePosition
+          )
+        : removeSignature(
+            message,
+            this.messageSignature,
+            effectiveChannelType,
+            this.signaturePosition
+          );
     },
     removeFromDraft() {
       if (this.conversationIdByRoute) {
@@ -807,7 +819,8 @@ export default {
           normalizedMessage = removeSignature(
             normalizedMessage,
             this.messageSignature,
-            effectiveChannelType
+            effectiveChannelType,
+            this.signaturePosition
           );
         }
 
@@ -911,7 +924,8 @@ export default {
         message = appendSignature(
           message,
           this.messageSignature,
-          effectiveChannelType
+          effectiveChannelType,
+          this.signaturePosition
         );
       }
 
@@ -962,7 +976,8 @@ export default {
         this.message = appendSignature(
           this.message,
           this.messageSignature,
-          effectiveChannelType
+          effectiveChannelType,
+          this.signaturePosition
         );
       }
       this.attachedFiles = [];

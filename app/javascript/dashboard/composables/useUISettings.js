@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { useStore, useStoreGetters } from 'dashboard/composables/store';
+import { SIGNATURE_POSITIONS } from 'dashboard/helper/editorHelper';
 
 export const DEFAULT_CONVERSATION_SIDEBAR_ITEMS_ORDER = Object.freeze([
   { name: 'conversation_actions' },
@@ -107,6 +108,16 @@ const fetchSignatureFlagFromUISettings = (channelType, uiSettings) => {
   return uiSettings.value[`${slugifiedChannel}_signature_enabled`];
 };
 
+/**
+ * Fetches the position where the signature should be placed in the editor.
+ * @param {Object} uiSettings - Reactive UI settings object.
+ * @returns {string} Either 'top' or 'bottom', defaults to 'bottom'.
+ */
+const fetchSignaturePositionFromUISettings = uiSettings =>
+  uiSettings.value?.signature_position === SIGNATURE_POSITIONS.TOP
+    ? SIGNATURE_POSITIONS.TOP
+    : SIGNATURE_POSITIONS.BOTTOM;
+
 const fetchQuotedReplyFlagFromUISettings = (channelType, uiSettings) => {
   if (!channelType) return false;
 
@@ -165,6 +176,11 @@ export function useUISettings() {
       setQuotedReplyFlagForInbox(channelType, value, updateUISettings),
     fetchQuotedReplyFlagFromUISettings: channelType =>
       fetchQuotedReplyFlagFromUISettings(channelType, uiSettings),
+    signaturePosition: computed(() =>
+      fetchSignaturePositionFromUISettings(uiSettings)
+    ),
+    setSignaturePosition: position =>
+      updateUISettings({ signature_position: position }),
     isEditorHotKeyEnabled: key => isEditorHotKeyEnabled(key, uiSettings),
   };
 }
