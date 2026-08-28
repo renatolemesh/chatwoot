@@ -368,32 +368,34 @@ function isBodyEmpty(content) {
 }
 
 function handleEmptyBodyWithSignature() {
-  // when the signature is on top, the body already starts right after it,
-  // so we only need to move the cursor to the end
-  if (signaturePosition.value === SIGNATURE_POSITIONS.TOP) {
-    focusEditorInputField('end');
-    return;
-  }
-
   const { schema, tr, doc } = state;
+  const isTop = signaturePosition.value === SIGNATURE_POSITIONS.TOP;
 
   const isEmptyParagraph = node =>
     node && node.type === schema.nodes.paragraph && node.content.size === 0;
 
+  // the body always gets its own paragraph next to the signature, otherwise the
+  // cursor lands inside the signature and everything typed inherits its marks
+  const bodyParagraph = isTop ? doc.lastChild : doc.firstChild;
+  const focusPosition = isTop ? 'end' : 'start';
+
   // Check if empty paragraph already exists to prevent duplicates when toggling signatures
-  if (isEmptyParagraph(doc.firstChild)) {
-    focusEditorInputField('start');
+  if (isEmptyParagraph(bodyParagraph)) {
+    focusEditorInputField(focusPosition);
     return;
   }
 
   // create a paragraph node and
-  // start a transaction to append it at the end
+  // start a transaction to insert it on the body side of the signature
   const paragraph = schema.nodes.paragraph.create();
-  const paragraphTransaction = tr.insert(0, paragraph);
+  const paragraphTransaction = tr.insert(
+    isTop ? doc.content.size : 0,
+    paragraph
+  );
   editorView.dispatch(paragraphTransaction);
 
-  // Set the focus at the start of the input field
-  focusEditorInputField('start');
+  // Set the focus on the body paragraph
+  focusEditorInputField(focusPosition);
 }
 
 function focusEditor(content) {

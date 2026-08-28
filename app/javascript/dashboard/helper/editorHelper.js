@@ -179,7 +179,7 @@ export function getEffectiveChannelType(channelType, medium) {
  * @param {string} channelType - Optional. The effective channel type to determine supported formatting.
  *                               For Twilio channels, pass the result of getEffectiveChannelType().
  * @param {string} position - Optional. Where to place the signature, top or bottom.
- *                            The top position is added as a single line above the body, without the delimiter.
+ *                            The top position is added as its own paragraph above the body, without the delimiter.
  * @returns {string} - The body with the signature appended.
  */
 export function appendSignature(
@@ -199,7 +199,9 @@ export function appendSignature(
   }
 
   if (position === SIGNATURE_POSITIONS.TOP) {
-    return `${cleanedSignature}\n${body.trimStart()}`;
+    // the signature gets its own paragraph, otherwise the body would be typed
+    // inside the same block and inherit the signature's formatting marks
+    return `${cleanedSignature}\n\n${body.trimStart()}`;
   }
 
   return `${body.trimEnd()}\n\n${appendDelimiter(cleanedSignature)}`;
