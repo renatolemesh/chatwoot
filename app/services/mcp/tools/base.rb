@@ -76,8 +76,17 @@ class Mcp::Tools::Base
     inbox
   end
 
+  # Nome exato ganha de parcial. Quando o parcial casa com mais de um canal
+  # (contas com "Comercial Oficial", "Email Comercial", ...), devolver o primeiro
+  # faria o assistente ler o canal errado sem avisar — melhor pedir para escolher.
   def match_inbox_by_name(scope, term)
     name = term.to_s.strip
-    scope.find_by('name ILIKE ?', name) || scope.find_by('name ILIKE ?', "%#{name}%")
+    exact = scope.find_by('name ILIKE ?', name)
+    return exact if exact
+
+    matches = scope.where('name ILIKE ?', "%#{name}%").to_a
+    return matches.first if matches.size <= 1
+
+    raise Mcp::Error, "Canal '#{term}' é ambíguo: #{matches.map(&:name).join(', ')}. Repita indicando o nome completo."
   end
 end
