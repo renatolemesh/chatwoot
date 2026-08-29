@@ -8,7 +8,8 @@ class Mcp::Tools::LerConversa < Mcp::Tools::Base
     end
 
     def description
-      'Lê uma conversa do Connect: dados do contato, canal, status, responsável e o histórico de mensagens em ordem cronológica.'
+      'Lê uma conversa do Connect: dados do contato, canal, status, responsável e o histórico de mensagens em ordem cronológica. ' \
+        'Traz também pode_responder, que indica se o canal aceita uma resposta de texto agora.'
     end
 
     def input_schema
@@ -30,6 +31,7 @@ class Mcp::Tools::LerConversa < Mcp::Tools::Base
     last_message = messages.reverse.find { |message| message.incoming? || message.outgoing? }
 
     present_conversation(conversation, last_message: last_message).merge(
+      pode_responder: conversation.can_reply?,
       mensagens: messages.map { |message| present_message(message) }
     )
   end
