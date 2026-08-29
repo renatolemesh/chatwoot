@@ -7,7 +7,10 @@ class Mcp::Registry
     Mcp::Tools::LerConversa,
     Mcp::Tools::BuscarContato,
     Mcp::Tools::ListarModelos,
-    Mcp::Tools::EnviarMensagem
+    Mcp::Tools::EnviarMensagem,
+    Mcp::Tools::RelatorioResumo,
+    Mcp::Tools::RelatorioPor,
+    Mcp::Tools::RelatorioAgora
   ].freeze
 
   class << self
