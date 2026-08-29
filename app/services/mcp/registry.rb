@@ -6,6 +6,7 @@ class Mcp::Registry
     Mcp::Tools::ListarConversas,
     Mcp::Tools::LerConversa,
     Mcp::Tools::BuscarContato,
+    Mcp::Tools::ListarModelos,
     Mcp::Tools::EnviarMensagem
   ].freeze
 
