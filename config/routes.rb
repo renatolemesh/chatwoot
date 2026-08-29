@@ -36,6 +36,11 @@ Rails.application.routes.draw do
   end
 
   get '/health', to: 'health#show'
+
+  # Servidor MCP (Model Context Protocol) usado por assistentes externos, como o ChatGPT.
+  # O token pode ir no header Authorization: Bearer <token> ou no próprio caminho da URL.
+  match '/mcp', to: 'mcp#handle', via: [:get, :post, :delete]
+  match '/mcp/:token', to: 'mcp#handle', via: [:get, :post, :delete]
   get '/api', to: 'api#index'
   namespace :api, defaults: { format: 'json' } do
     namespace :v1 do
