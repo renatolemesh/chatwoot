@@ -8,6 +8,8 @@ class Mcp::Registry
     Mcp::Tools::BuscarContato,
     Mcp::Tools::ListarModelos,
     Mcp::Tools::EnviarMensagem,
+    Mcp::Tools::AtribuirConversa,
+    Mcp::Tools::ResolverConversa,
     Mcp::Tools::RelatorioResumo,
     Mcp::Tools::RelatorioPor,
     Mcp::Tools::RelatorioAgora

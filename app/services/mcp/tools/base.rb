@@ -76,17 +76,26 @@ class Mcp::Tools::Base
     inbox
   end
 
-  # Nome exato ganha de parcial. Quando o parcial casa com mais de um canal
-  # (contas com "Comercial Oficial", "Email Comercial", ...), devolver o primeiro
-  # faria o assistente ler o canal errado sem avisar — melhor pedir para escolher.
   def match_inbox_by_name(scope, term)
+    match_by_name(scope.to_a, term, 'Canal')
+  end
+
+  # Nome exato ganha de parcial. Quando o parcial casa com mais de um registro
+  # (contas com "Comercial Oficial", "Email Comercial", ...), devolver o primeiro
+  # faria o assistente agir sobre o errado sem avisar — melhor pedir para escolher.
+  def match_by_name(records, term, label)
     name = term.to_s.strip
-    exact = scope.find_by('name ILIKE ?', name)
+    exact = records.find { |record| display_name(record).casecmp?(name) }
     return exact if exact
 
-    matches = scope.where('name ILIKE ?', "%#{name}%").to_a
+    matches = records.select { |record| display_name(record).downcase.include?(name.downcase) }
     return matches.first if matches.size <= 1
 
-    raise Mcp::Error, "Canal '#{term}' é ambíguo: #{matches.map(&:name).join(', ')}. Repita indicando o nome completo."
+    raise Mcp::Error, "#{label} '#{term}' é ambíguo: #{matches.map { |record| display_name(record) }.join(', ')}. " \
+                      'Repita indicando o nome completo.'
+  end
+
+  def display_name(record)
+    (record.try(:available_name) || record.name).to_s
   end
 end

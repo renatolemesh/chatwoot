@@ -23,6 +23,7 @@ module Mcp::Presenter
       status: conversation.status,
       prioridade: conversation.priority,
       responsavel: conversation.assignee&.available_name,
+      time: conversation.team&.name,
       contato: present_contact(conversation.contact),
       ultima_mensagem: last_message&.content,
       ultima_mensagem_de: last_message&.message_type,
