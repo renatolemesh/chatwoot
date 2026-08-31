@@ -12,6 +12,7 @@ import { routes as captainRoutes } from './captain/captain.routes';
 import AppContainer from './Dashboard.vue';
 import Suspended from './suspended/Index.vue';
 import NoAccounts from './noAccounts/Index.vue';
+import OauthConsent from './oauth/Index.vue';
 
 export default {
   routes: [
@@ -43,6 +44,11 @@ export default {
       path: frontendURL('no-accounts'),
       name: 'no_accounts',
       component: NoAccounts,
+    },
+    {
+      path: frontendURL('oauth/authorize'),
+      name: 'mcp_oauth_authorize',
+      component: OauthConsent,
     },
   ],
 };

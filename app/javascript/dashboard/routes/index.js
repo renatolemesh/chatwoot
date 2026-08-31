@@ -18,6 +18,12 @@ export const validateAuthenticateRoutePermission = (to, next) => {
     return '';
   }
 
+  // A tela de consentimento do OAuth vive fora do escopo de conta: o assistente
+  // que redireciona para cá não sabe qual conta usar.
+  if (to.name === 'mcp_oauth_authorize') {
+    return next();
+  }
+
   const { accounts = [], account_id: accountId } = user;
 
   if (!accounts.length) {

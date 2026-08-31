@@ -41,6 +41,18 @@ Rails.application.routes.draw do
   # O token pode ir no header Authorization: Bearer <token> ou no próprio caminho da URL.
   match '/mcp', to: 'mcp#handle', via: [:get, :post, :delete]
   match '/mcp/:token', to: 'mcp#handle', via: [:get, :post, :delete]
+
+  # Servidor de autorização OAuth 2.1 do MCP. O ChatGPT e o Claude descobrem os
+  # endpoints pelos documentos .well-known e se registram sozinhos.
+  get '/.well-known/oauth-protected-resource', to: 'oauth/metadata#protected_resource'
+  get '/.well-known/oauth-protected-resource/*resource', to: 'oauth/metadata#protected_resource'
+  get '/.well-known/oauth-authorization-server', to: 'oauth/metadata#authorization_server'
+  get '/.well-known/oauth-authorization-server/*resource', to: 'oauth/metadata#authorization_server'
+  namespace :oauth do
+    get 'authorize', to: 'authorizations#new'
+    post 'token', to: 'tokens#create'
+    post 'register', to: 'registrations#create'
+  end
   get '/api', to: 'api#index'
   namespace :api, defaults: { format: 'json' } do
     namespace :v1 do
@@ -394,6 +406,9 @@ Rails.application.routes.draw do
       end
 
       resource :notification_subscriptions, only: [:create, :destroy]
+
+      # Consentimento do OAuth do MCP, aprovado pelo usuário já logado no Connect.
+      resources :mcp_authorizations, only: [:index, :create]
 
       namespace :widget do
         resource :direct_uploads, only: [:create]

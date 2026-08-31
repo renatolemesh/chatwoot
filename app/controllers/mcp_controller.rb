@@ -3,6 +3,7 @@
 # todas as ferramentas rodam com as permissões de conta e de canal desse usuário.
 class McpController < ActionController::API
   include RequestExceptionHandler
+  include Oauth::BaseUrl
 
   around_action :reset_current_attributes
   before_action :ensure_mcp_enabled
@@ -34,12 +35,30 @@ class McpController < ActionController::API
   end
 
   def authenticate_mcp_user!
-    access_token = AccessToken.find_by(token: mcp_token) if mcp_token.present?
-    @mcp_user = access_token.owner if access_token&.owner.is_a?(User)
+    @mcp_user = resolve_user_from_token
     return if @mcp_user.present?
 
-    response.headers['WWW-Authenticate'] = 'Bearer realm="Connect MCP"'
+    response.headers['WWW-Authenticate'] = unauthorized_challenge
     render json: { error: 'Invalid access token' }, status: :unauthorized
+  end
+
+  # Aceita o token emitido por OAuth e também o token pessoal da API, que segue
+  # valendo para quem prefere configurar o conector à mão.
+  def resolve_user_from_token
+    return if mcp_token.blank?
+
+    McpOauthToken.authenticate(mcp_token)&.user || personal_access_token_user
+  end
+
+  def personal_access_token_user
+    owner = AccessToken.find_by(token: mcp_token)&.owner
+    owner if owner.is_a?(User)
+  end
+
+  # Sem esta dica o cliente recebe apenas um 401 e não tem como descobrir onde
+  # fazer o login (RFC 9728).
+  def unauthorized_challenge
+    %(Bearer realm="Connect MCP", resource_metadata="#{base_url}/.well-known/oauth-protected-resource")
   end
 
   def mcp_token

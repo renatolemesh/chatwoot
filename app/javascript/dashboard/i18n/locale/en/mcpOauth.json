@@ -1,0 +1,9 @@
+{
+  "MCP_OAUTH": {
+    "TITLE": "Connect an assistant",
+    "DESCRIPTION": "%{client} is asking to access your Chatwoot account as %{name}. It will be able to read and reply to conversations in the inboxes assigned to you, and nothing beyond that.",
+    "AUTHORIZE": "Authorize",
+    "CANCEL": "Cancel",
+    "ERROR": "This authorization request is no longer valid. Start the connection again from the assistant."
+  }
+}

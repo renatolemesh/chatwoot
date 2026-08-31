@@ -38,6 +38,7 @@ import snooze from './snooze.json';
 import teamsSettings from './teamsSettings.json';
 import whatsappTemplates from './whatsappTemplates.json';
 import contentTemplates from './contentTemplates.json';
+import mcpOauth from './mcpOauth.json';
 import mfa from './mfa.json';
 import yearInReview from './yearInReview.json';
 
@@ -82,6 +83,7 @@ export default {
   ...teamsSettings,
   ...whatsappTemplates,
   ...contentTemplates,
+  ...mcpOauth,
   ...mfa,
   ...yearInReview,
 };
