@@ -33,7 +33,7 @@ class Oauth::AuthorizationsController < ActionController::API
       state: params[:state]
     }.compact.to_query
 
-    "#{base_url}/app/oauth/authorize?#{query}"
+    "#{base_url}/app/oauth/consent?#{query}"
   end
 
   # Um pedido inválido nunca pode ser devolvido por redirecionamento: a

@@ -46,8 +46,10 @@ export default {
       component: NoAccounts,
     },
     {
-      path: frontendURL('oauth/authorize'),
-      name: 'mcp_oauth_authorize',
+      // Não use 'authorize' no caminho: o DashboardController serve o pack v3
+      // (a SPA de login) para qualquer rota que contenha /auth ou /login.
+      path: frontendURL('oauth/consent'),
+      name: 'mcp_oauth_consent',
       component: OauthConsent,
     },
   ],
