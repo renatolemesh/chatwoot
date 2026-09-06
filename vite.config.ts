@@ -88,8 +88,7 @@ export default defineConfig({
       'pinia',
       '@vueuse/core',
       '@vueuse/components',
-      'chart.js',
-      'vue-chartjs',
+      '@chatwoot/viz',
       'date-fns',
       'dompurify',
       'highlight.js',
@@ -145,7 +144,7 @@ export default defineConfig({
         manualChunks: !isLibraryMode ? {
           // Separate vendor chunks for better caching
           'vue-vendor': ['vue', 'vue-router', 'vuex', 'pinia'],
-          'chart-vendor': ['chart.js', 'vue-chartjs'],
+          'chart-vendor': ['@chatwoot/viz'],
           'ui-vendor': ['@vueuse/core', '@vueuse/components'],
         } : undefined,
       },
