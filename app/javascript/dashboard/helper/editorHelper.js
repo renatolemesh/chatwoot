@@ -2,6 +2,7 @@ import {
   messageSchema,
   MessageMarkdownTransformer,
   MessageMarkdownSerializer,
+  Selection,
 } from '@chatwoot/prosemirror-schema';
 import { replaceVariablesInMessage } from '@chatwoot/utils';
 import * as Sentry from '@sentry/vue';
@@ -130,6 +131,13 @@ export function cleanSignature(signature) {
     return signature;
   }
 }
+
+// Strip `\<newline>` hardbreak markers trailing `--` after a signature slice
+const stripDelimiterHardbreaks = body =>
+  body.replace(/(--)\s*(?:\\\s*)+$/, '$1');
+
+// Strip standalone blank-paragraph markers (`\` on their own lines).
+const stripTrailingBlankLine = body => body.replace(/\n(?:\s*\\\n)+$/, '');
 
 /**
  * Adds the signature delimiter to the beginning of the signature.
@@ -264,24 +272,32 @@ export function removeSignature(
   // no need to trim the ends here, because it will simply be removed in the next method
   let newBody = body;
 
-  if (match.index > -1) {
+  const signatureIndex = match.index;
+
+  if (signatureIndex > -1) {
     // if signature is present, remove it and trim it
     // trimming will ensure any spaces or new lines around the signature are removed
     // For the bottom position, this means we will have the delimiter at the end
     newBody =
       position === SIGNATURE_POSITIONS.TOP
         ? newBody
-            .slice(match.index + match.signature.length)
+            .slice(signatureIndex + match.signature.length)
             // the editor serializes the line break after the signature as a markdown hard break
             .replace(/^\\\n/, '')
             .trimStart()
-        : newBody.substring(0, match.index).trimEnd();
+        : stripDelimiterHardbreaks(
+            newBody.substring(0, signatureIndex)
+          ).trimEnd();
   }
 
   // Remove delimiter if it's at the end
   if (newBody.endsWith(SIGNATURE_DELIMITER)) {
     // if the delimiter is at the end, remove it
     newBody = newBody.slice(0, -SIGNATURE_DELIMITER.length);
+    // strip any trailing blank-line markers
+    if (signatureIndex > -1) {
+      newBody = stripTrailingBlankLine(newBody);
+    }
   }
 
   return newBody;
@@ -320,6 +336,18 @@ export const scrollCursorIntoView = view => {
   if (node && node.scrollIntoView) {
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+};
+
+/**
+ * Collapse the current selection to a cursor near its head. Used to override
+ * the default Escape -> selectParentNode behavior which would otherwise keep
+ * the text highlight visible.
+ *
+ * @param {EditorView} view - The ProseMirror EditorView
+ */
+export const collapseSelection = view => {
+  const { tr, selection } = view.state;
+  view.dispatch(tr.setSelection(Selection.near(selection.$head)));
 };
 
 /**

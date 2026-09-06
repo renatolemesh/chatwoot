@@ -25,6 +25,7 @@ const {
   DISABLE_USER_PROFILE_UPDATE: disableUserProfileUpdate,
   DEPLOYMENT_ENV: deploymentEnv,
   EXCLUDED_PENDING_CONTENT: excludedPendingContent,
+  ACTIVE_PLATFORM_BANNERS: activePlatformBanners,
 } = window.globalConfig || {};
 
 const state = {
@@ -51,6 +52,7 @@ const state = {
   widgetBrandURL,
   isEnterprise: parseBoolean(isEnterprise),
   excludedPendingContent,
+  activePlatformBanners: activePlatformBanners || [],
 };
 
 export const getters = {
