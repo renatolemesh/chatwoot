@@ -164,7 +164,8 @@ export default {
         this.inReplyTo?.id &&
         !this.isPrivate &&
         this.inboxHasFeature(INBOX_FEATURES.REPLY_TO) &&
-        !this.is360DialogWhatsAppChannel
+        !this.is360DialogWhatsAppChannel &&
+        !this.copilot.isActive.value
       );
     },
     showWhatsappTemplates() {
@@ -1476,7 +1477,7 @@ export default {
 }
 
 .reply-box__top {
-  @apply relative py-0 px-4 -mt-px;
+  @apply relative py-0 px-3 -mt-px;
 }
 
 .emoji-dialog {
