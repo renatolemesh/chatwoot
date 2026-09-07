@@ -69,6 +69,7 @@ services:
     image: ${APP_IMAGE}
     container_name: ${STACK_PREFIX}-rails
     depends_on: [redis]
+    env_file: .env
     environment:
       <<: *app-env
       PORT: ${APP_PORT}
@@ -94,6 +95,7 @@ services:
     image: ${APP_IMAGE}
     container_name: ${STACK_PREFIX}-sidekiq
     depends_on: [redis]
+    env_file: .env
     environment:
       <<: *app-env
     working_dir: /app
