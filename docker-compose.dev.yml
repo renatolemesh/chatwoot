@@ -1,149 +1,132 @@
-# Stack de DESENVOLVIMENTO dos relatorios.
+########################################################################
+# Modo DESENVOLVIMENTO da stack de teste.
 #
-# Diferenca essencial para docker-compose.yml (modo producao): o codigo do host e
-# montado dentro do container, entao alterar um .vue ou um .rb NAO exige rebuild
-# -- o Vite recarrega o componente no navegador em ~1s e o Rails recarrega a
-# classe na requisicao seguinte. So se mexe em Gemfile ou package.json e que a
-# imagem precisa ser reconstruida:
+# O docker-compose.yml e a base comum as tres stacks (eletrofast, xpertion,
+# teste) e roda assets pre-compilados. Este arquivo e o oposto: monta o codigo
+# do host, entao alterar um .vue ou um .rb NAO exige rebuild -- o Vite recarrega
+# o componente no navegador em ~6s e o Rails recarrega a classe na requisicao
+# seguinte. So Gemfile ou package.json exigem reconstruir a imagem:
 #
 #   docker compose -f docker-compose.dev.yml build
 #   docker compose -f docker-compose.dev.yml up -d
 #
-# Para voltar ao modo producao (assets pre-compilados, mais leve, sem recarga):
+# Para voltar ao modo producao:
 #
 #   docker compose -f docker-compose.dev.yml down
 #   docker compose up -d
 #
-# Ocupa o mesmo slot da stack de producao (mesmo container_name para o
-# Rails), entao o nginx continua encontrando o app sem alteracao. O bloco
-# location /vite-dev/ no nginx e o que faz os assets e o websocket de HMR
-# passarem por HTTPS -- sem ele o navegador bloqueia tudo por conteudo misto.
+# E deliberadamente autocontido, e nao um overlay sobre a base: usar
+# `-f docker-compose.yml -f ...` faria o compose ignorar o
+# docker-compose.override.yml, e o Sidekiq subiria sobre a copia de dados reais.
+# Aqui o worker simplesmente nao existe.
 #
-# Mantem as duas propriedades de seguranca da outra stack:
-#   - o banco e a copia xpertion_relatorios, nunca o xpertion de producao
-#   - sem Sidekiq, entao os dados reais copiados nao disparam nada para fora#
-# Portas: os valores ficam no .env, este arquivo so os referencia. Sao duas
-# variaveis por servico, porque nao sao a mesma coisa:
-#   APP_PORT (3000)        porta dentro do container, igual a do Dockerfile.
-#                          E por ela que o nginx fala, pela rede do Docker.
-#   APP_HOST_PORT (3002)   porta publicada no host. Nao pode ser 3000: o
-#                          chatwoot-rails do eletrofast ja ocupa 127.0.0.1:3000.
-# Mesmo par para VITE_PORT/VITE_HOST_PORT e REDIS_PORT/REDIS_HOST_PORT.
-#
-# Os defaults no ${VAR:-valor} sao rede de seguranca, nao a configuracao: uma
-# variavel ausente faria o compose substituir por vazio em silencio, que foi o
-# que ja derrubou esta stack uma vez. Para mudar uma porta, edite o .env.
+# Le as mesmas variaveis do .env que a base: STACK_PREFIX, APP_PORT, REDIS_PORT.
 # Ao mudar APP_PORT ou VITE_PORT, ajuste o vhost em nginx-docker/default.conf,
-# que aponta para test-chatwoot-rails:<APP_PORT> e test-chatwoot-vite:<VITE_PORT>.
+# que aponta para ${STACK_PREFIX}-rails:<APP_PORT> e ${STACK_PREFIX}-vite:<VITE_PORT>.
+########################################################################
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
-  test-chatwoot-redis:
+  redis:
     image: redis:alpine
-    container_name: test-chatwoot-redis
-    mem_limit: 128m
-    mem_reservation: 32m
-    memswap_limit: 384m
+    container_name: ${STACK_PREFIX}-redis
     restart: always
-    networks:
-      - shared-net
+    networks: [shared-net]
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: >
-      redis-server --requirepass "${REDIS_PASSWORD}" --port ${REDIS_PORT:-6384} --appendonly yes
+      redis-server --requirepass "${REDIS_PASSWORD}"
+      --port ${REDIS_PORT} --appendonly yes
     volumes:
       - ./docker_data/redis:/data
     ports:
-      - '127.0.0.1:${REDIS_HOST_PORT:-6384}:${REDIS_PORT:-6384}'
-    env_file: .env
+      - '127.0.0.1:${REDIS_PORT}:${REDIS_PORT}'
+    mem_limit: ${REDIS_MEM_LIMIT:-128m}
+    mem_reservation: ${REDIS_MEM_RESERVATION:-32m}
+    memswap_limit: ${REDIS_MEMSWAP_LIMIT:-384m}
+    logging: *logging
 
   web:
     build:
       context: .
       dockerfile: Dockerfile.dev
       target: development
-    image: connect-new:dev
-    container_name: test-chatwoot-rails
-    depends_on:
-      - test-chatwoot-redis
+    image: ${APP_IMAGE_DEV:-connect-new:dev}
+    container_name: ${STACK_PREFIX}-rails
+    depends_on: [redis]
+    env_file: .env
     environment:
-      - RAILS_ENV=development
-      - NODE_ENV=development
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-      - CHATWOOT_BASE_URL=${CHATWOOT_BASE_URL}
-      - FRONTEND_URL=${FRONTEND_URL}
+      RAILS_ENV: development
+      NODE_ENV: development
+      PORT: ${APP_PORT}
       # O nginx termina o TLS; forcar SSL aqui geraria redirect infinito.
-      - FORCE_SSL=false
-      - INSTALLATION_ENV=docker
+      FORCE_SSL: "false"
       # O rack-mini-profiler injeta um badge cujo includes.js responde 500 atras
-      # do proxy, sujando o console. config/initializers/rack_profiler.rb le esta
-      # variavel.
-      - DISABLE_MINI_PROFILER=true
-      - FRONTEND_APP_TITLE=Connect
-      - BRAND_NAME=Connect
-      - INSTALLATION_NAME=Connect
-      - DISPLAY_MANIFEST=false
-      - DB_POOL=25
-      - DB_TIMEOUT=30000
-      - DB_CONNECT_TIMEOUT=30
-      - POSTGRES_HOST=pg-central
-      - POSTGRES_PORT=5432
-      - POSTGRES_USERNAME=app_test
-      - POSTGRES_PASSWORD=${TEST_DB_PASSWORD}
-      - POSTGRES_DATABASE=xpertion_relatorios
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@test-chatwoot-redis:${REDIS_PORT:-6384}
+      # do proxy. config/initializers/rack_profiler.rb le esta variavel.
+      DISABLE_MINI_PROFILER: "true"
+      POSTGRES_HOST: ${POSTGRES_HOST:-pg-central}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@${STACK_PREFIX}-redis:${REDIS_PORT}
       # Onde o Rails procura o servidor do Vite. AUTO_BUILD desligado porque o
       # servico vite abaixo ja mantem o dev server no ar.
-      - VITE_RUBY_HOST=test-chatwoot-vite
-      - VITE_RUBY_PORT=${VITE_PORT:-3036}
-      - VITE_RUBY_AUTO_BUILD=false
-      # Sem ACTIVE_RECORD_ENCRYPTION_*: a xpertion tambem roda sem elas, entao la
-      # a criptografia do ActiveRecord nao esta ativa e os campos estao em claro.
+      VITE_RUBY_HOST: ${STACK_PREFIX}-vite
+      VITE_RUBY_PORT: ${VITE_PORT}
+      VITE_RUBY_AUTO_BUILD: "false"
     volumes:
       - .:/app
-      # Volumes anonimos: o node_modules e o tmp vem da imagem, nao do host.
+      # Volumes anonimos: node_modules e tmp vem da imagem, nao do host.
       - /app/node_modules
       - /app/tmp
     ports:
-      - "0.0.0.0:${APP_HOST_PORT:-3002}:${APP_PORT:-3000}"
+      - '${APP_BIND:-127.0.0.1}:${APP_PORT}:${APP_PORT}'
     # Sem db:migrate: a copia ja esta no schema da develop e nao deve mudar.
-    command: bash -lc "rm -f tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p ${APP_PORT:-3000}"
-    networks:
-      - shared-net
-    mem_limit: 1280m
-    mem_reservation: 256m
-    memswap_limit: 3072m
+    command: bash -lc "rm -f tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p ${APP_PORT}"
+    networks: [shared-net]
+    mem_limit: ${WEB_DEV_MEM_LIMIT:-1280m}
+    mem_reservation: ${WEB_DEV_MEM_RESERVATION:-256m}
+    memswap_limit: ${WEB_DEV_MEMSWAP_LIMIT:-3072m}
     restart: unless-stopped
+    logging: *logging
 
   vite:
     build:
       context: .
       dockerfile: Dockerfile.dev
       target: development
-    image: connect-new:dev
-    container_name: test-chatwoot-vite
+    image: ${APP_IMAGE_DEV:-connect-new:dev}
+    container_name: ${STACK_PREFIX}-vite
     environment:
-      - NODE_ENV=development
-      - RAILS_ENV=development
-      - VITE_RUBY_HOST=0.0.0.0
-      - VITE_RUBY_PORT=${VITE_PORT:-3036}
+      NODE_ENV: development
+      RAILS_ENV: development
+      VITE_RUBY_HOST: 0.0.0.0
+      VITE_RUBY_PORT: ${VITE_PORT}
       # O navegador fala com o Vite pelo dominio publico, via nginx, em wss:443.
-      - VITE_RUBY_HMR_HOST=connect.synapsea.com.br
-      - VITE_HMR_PROTOCOL=wss
-      - VITE_HMR_CLIENT_PORT=443
-      - CHOKIDAR_USEPOLLING=false
-      - NODE_OPTIONS=--max-old-space-size=1280
+      VITE_RUBY_HMR_HOST: ${VITE_HMR_HOST}
+      VITE_HMR_PROTOCOL: ${VITE_HMR_PROTOCOL:-wss}
+      VITE_HMR_CLIENT_PORT: ${VITE_HMR_CLIENT_PORT:-443}
+      CHOKIDAR_USEPOLLING: "false"
+      NODE_OPTIONS: --max-old-space-size=1280
     volumes:
       - .:/app
       - /app/node_modules
-    # node_modules ja vem instalado e hoisted da imagem: entra direto no dev server.
-    command: bash -lc "./node_modules/.bin/vite dev --host 0.0.0.0 --port ${VITE_PORT:-3036} --strictPort"
+    # node_modules ja vem instalado e hoisted da imagem: entra direto no server.
+    command: bash -lc "./node_modules/.bin/vite dev --host 0.0.0.0 --port ${VITE_PORT} --strictPort"
     ports:
-      - "127.0.0.1:${VITE_HOST_PORT:-3036}:${VITE_PORT:-3036}"
-    networks:
-      - shared-net
-    mem_limit: 1792m
-    mem_reservation: 256m
-    memswap_limit: 3584m
+      - '127.0.0.1:${VITE_PORT}:${VITE_PORT}'
+    networks: [shared-net]
+    mem_limit: ${VITE_MEM_LIMIT:-1792m}
+    mem_reservation: ${VITE_MEM_RESERVATION:-256m}
+    memswap_limit: ${VITE_MEMSWAP_LIMIT:-3584m}
     restart: unless-stopped
+    logging: *logging
 
 networks:
   shared-net:

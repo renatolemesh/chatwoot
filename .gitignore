@@ -111,3 +111,6 @@ docker_data/*
 
 # Backups locais dos compose files (ver .compose-backup/)
 .compose-backup/
+
+# Ajustes locais de cada stack; o docker-compose.yml e a base comum versionada
+docker-compose.override.yml
