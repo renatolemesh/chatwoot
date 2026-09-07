@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips \
   && rm -rf /var/lib/apt/lists/*
 
-# Node 20
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+# Node 24 (package.json declara engines: node 24.x)
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
   && apt-get update && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
 
@@ -74,7 +74,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     ca-certificates \
-  && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+  && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
   && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
 
