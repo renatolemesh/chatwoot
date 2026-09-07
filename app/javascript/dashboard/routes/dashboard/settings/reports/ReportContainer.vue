@@ -48,17 +48,11 @@ export default {
     }),
     metrics() {
       const reportKeys = Object.keys(this.reportKeys);
-      const infoText = {
-        FIRST_RESPONSE_TIME: this.$t(
-          `REPORT.METRICS.FIRST_RESPONSE_TIME.INFO_TEXT`
-        ),
-        RESOLUTION_TIME: this.$t(`REPORT.METRICS.RESOLUTION_TIME.INFO_TEXT`),
-      };
       return reportKeys.map(key => ({
         NAME: this.$t(`REPORT.METRICS.${key}.NAME`),
         KEY: this.reportKeys[key],
         DESC: this.$t(`REPORT.METRICS.${key}.DESC`),
-        INFO_TEXT: infoText[key],
+        INFO_TEXT: this.$t(`REPORT.METRICS.${key}.INFO_TEXT`),
         TOOLTIP_TEXT: `REPORT.METRICS.${key}.TOOLTIP_TEXT`,
         trend: this.calculateTrend(this.reportKeys[key]),
       }));
@@ -87,6 +81,9 @@ export default {
         }
         if (this.groupBy?.period === GROUP_BY_FILTER[4].period) {
           return format(fromUnixTime(element.timestamp), 'yyyy');
+        }
+        if (this.groupBy?.period === GROUP_BY_FILTER[5].period) {
+          return format(fromUnixTime(element.timestamp), 'dd-MMM HH:mm');
         }
         return format(fromUnixTime(element.timestamp), 'dd-MMM');
       });

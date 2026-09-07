@@ -97,6 +97,50 @@ class ReportsAPI extends ApiClient {
     });
   }
 
+  getResponseTimePercentiles({ from, to, businessHours } = {}) {
+    return axios.get(`${this.url}/response_time_percentiles`, {
+      params: {
+        since: from,
+        until: to,
+        business_hours: businessHours,
+      },
+    });
+  }
+
+  getConversationBacklog({ from, to } = {}) {
+    return axios.get(`${this.url}/conversation_backlog`, {
+      params: {
+        since: from,
+        until: to,
+        timezone_offset: getTimeOffset(),
+      },
+    });
+  }
+
+  getConversationFunnel({ from, to } = {}) {
+    return axios.get(`${this.url}/conversation_funnel`, {
+      params: { since: from, until: to },
+    });
+  }
+
+  getResolutionReasons({ from, to } = {}) {
+    return axios.get(`${this.url}/resolution_reasons`, {
+      params: { since: from, until: to },
+    });
+  }
+
+  getInboxStatusBreakdown({ from, to } = {}) {
+    return axios.get(`${this.url}/inbox_status_breakdown`, {
+      params: { since: from, until: to },
+    });
+  }
+
+  getInboxLabelMatrix({ from, to } = {}) {
+    return axios.get(`${this.url}/inbox_label_matrix`, {
+      params: { since: from, until: to },
+    });
+  }
+
   getBotSummary({ from, to, groupBy, businessHours } = {}) {
     return axios.get(`${this.url}/bot_summary`, {
       params: {

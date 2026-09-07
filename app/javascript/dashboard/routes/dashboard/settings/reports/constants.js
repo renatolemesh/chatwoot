@@ -23,6 +23,7 @@ export const formatTime = timeInSeconds => {
 
 export const GROUP_BY_FILTER = {
   1: { id: 1, period: 'day' },
+  5: { id: 5, period: 'hour' },
   2: { id: 2, period: 'week' },
   3: { id: 3, period: 'month' },
   4: { id: 4, period: 'year' },
@@ -108,6 +109,41 @@ export const DEFAULT_LINE_CHART = {
   borderColor: '#779BBB',
   pointBackgroundColor: '#779BBB',
 };
+
+// Distinct fills for side-by-side entity comparison. Five is the cap: past that the
+// grouped bars get too thin to read.
+export const COMPARISON_COLORS = [
+  'rgb(31, 147, 255)',
+  'rgb(255, 159, 64)',
+  'rgb(75, 192, 128)',
+  'rgb(153, 102, 255)',
+  'rgb(233, 99, 132)',
+];
+
+export const MAX_COMPARISON_ENTITIES = COMPARISON_COLORS.length;
+
+export const COMPARISON_METRICS = [
+  {
+    key: 'conversations_count',
+    translationKey: 'REPORT.METRICS.CONVERSATIONS.NAME',
+  },
+  {
+    key: 'outgoing_messages_count',
+    translationKey: 'REPORT.METRICS.OUTGOING_MESSAGES.NAME',
+  },
+  {
+    key: 'avg_first_response_time',
+    translationKey: 'REPORT.METRICS.FIRST_RESPONSE_TIME.NAME',
+  },
+  {
+    key: 'avg_resolution_time',
+    translationKey: 'REPORT.METRICS.RESOLUTION_TIME.NAME',
+  },
+  {
+    key: 'resolutions_count',
+    translationKey: 'REPORT.METRICS.RESOLUTION_COUNT.NAME',
+  },
+];
 
 export const DEFAULT_BAR_CHART = {
   type: 'bar',

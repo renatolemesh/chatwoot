@@ -470,6 +470,11 @@ Rails.application.routes.draw do
               get :bot_metrics
               get :inbox_label_matrix
               get :first_response_time_distribution
+              get :response_time_percentiles
+              get :conversation_backlog
+              get :conversation_funnel
+              get :resolution_reasons
+              get :inbox_status_breakdown
               get :outgoing_messages_count
             end
           end

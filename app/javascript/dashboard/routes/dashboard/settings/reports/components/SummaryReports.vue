@@ -10,6 +10,7 @@ import {
   useVueTable,
   createColumnHelper,
   getCoreRowModel,
+  getSortedRowModel,
 } from '@tanstack/vue-table';
 import { computed, onMounted, ref, h } from 'vue';
 
@@ -43,6 +44,8 @@ const to = ref(0);
 const businessHours = ref(false);
 import { useI18n } from 'vue-i18n';
 import SummaryReportLink from './SummaryReportLink.vue';
+import HelpIcon from './HelpIcon.vue';
+import EntityComparison from './EntityComparison.vue';
 
 const flagMap = {
   agent: 'isFetchingAgentSummaryReports',
@@ -62,14 +65,29 @@ const getMetrics = id =>
 const columnHelper = createColumnHelper();
 const { t } = useI18n();
 
-const defaulSpanRender = cellProps =>
-  h(
-    'span',
-    {
-      class: cellProps.getValue() ? '' : 'text-n-slate-12',
-    },
-    cellProps.getValue()
-  );
+// The row keeps raw numbers so sorting compares values, not formatted strings;
+// formatting happens here, at render time.
+const renderMetricCell = format => cellProps => {
+  const value = cellProps.getValue();
+  return h('span', value === undefined ? '--' : format(value));
+};
+
+const renderTime = renderMetricCell(formatTime);
+const renderCount = renderMetricCell(value => value.toLocaleString());
+
+// Ranking a team means asking who is highest, so metrics open descending; rows
+// with no data stay at the bottom either way.
+const METRIC_COLUMN_SORTING = { sortDescFirst: true, sortUndefined: 'last' };
+
+// The header cell toggles sorting on click, so the help icon has to swallow its own.
+const renderHeader = (labelKey, helpKey) => () =>
+  h('span', { class: 'flex items-center gap-1' }, [
+    t(labelKey),
+    h(HelpIcon, {
+      content: t(helpKey),
+      onClick: event => event.stopPropagation(),
+    }),
+  ]);
 
 const columns = computed(() => [
   columnHelper.accessor('name', {
@@ -78,35 +96,51 @@ const columns = computed(() => [
     cell: cellProps => h(SummaryReportLink, cellProps),
   }),
   columnHelper.accessor('conversationsCount', {
-    header: t('SUMMARY_REPORTS.CONVERSATIONS'),
+    header: renderHeader(
+      'SUMMARY_REPORTS.CONVERSATIONS',
+      'SUMMARY_REPORTS.HELP.CONVERSATIONS'
+    ),
     width: 200,
-    cell: defaulSpanRender,
+    cell: renderCount,
+    ...METRIC_COLUMN_SORTING,
   }),
   columnHelper.accessor('avgFirstResponseTime', {
-    header: t('SUMMARY_REPORTS.AVG_FIRST_RESPONSE_TIME'),
+    header: renderHeader(
+      'SUMMARY_REPORTS.AVG_FIRST_RESPONSE_TIME',
+      'SUMMARY_REPORTS.HELP.AVG_FIRST_RESPONSE_TIME'
+    ),
     width: 200,
-    cell: defaulSpanRender,
+    cell: renderTime,
+    ...METRIC_COLUMN_SORTING,
   }),
   columnHelper.accessor('avgResolutionTime', {
-    header: t('SUMMARY_REPORTS.AVG_RESOLUTION_TIME'),
+    header: renderHeader(
+      'SUMMARY_REPORTS.AVG_RESOLUTION_TIME',
+      'SUMMARY_REPORTS.HELP.AVG_RESOLUTION_TIME'
+    ),
     width: 200,
-    cell: defaulSpanRender,
+    cell: renderTime,
+    ...METRIC_COLUMN_SORTING,
   }),
   columnHelper.accessor('avgReplyTime', {
-    header: t('SUMMARY_REPORTS.AVG_REPLY_TIME'),
+    header: renderHeader(
+      'SUMMARY_REPORTS.AVG_REPLY_TIME',
+      'SUMMARY_REPORTS.HELP.AVG_REPLY_TIME'
+    ),
     width: 200,
-    cell: defaulSpanRender,
+    cell: renderTime,
+    ...METRIC_COLUMN_SORTING,
   }),
   columnHelper.accessor('resolutionsCount', {
-    header: t('SUMMARY_REPORTS.RESOLUTION_COUNT'),
+    header: renderHeader(
+      'SUMMARY_REPORTS.RESOLUTION_COUNT',
+      'SUMMARY_REPORTS.HELP.RESOLUTION_COUNT'
+    ),
     width: 200,
-    cell: defaulSpanRender,
+    cell: renderCount,
+    ...METRIC_COLUMN_SORTING,
   }),
 ]);
-
-const renderAvgTime = value => (value ? formatTime(value) : '--');
-
-const renderCount = value => (value ? value.toLocaleString() : '--');
 
 const tableData = computed(() =>
   rowItems.value.map(row => {
@@ -123,11 +157,11 @@ const tableData = computed(() =>
       // we fallback on title, label for instance does not have a name property
       name: row.name ?? row.title,
       type: props.type,
-      conversationsCount: renderCount(conversationsCount),
-      avgFirstResponseTime: renderAvgTime(avgFirstResponseTime),
-      avgReplyTime: renderAvgTime(avgReplyTime),
-      avgResolutionTime: renderAvgTime(avgResolutionTime),
-      resolutionsCount: renderCount(resolvedConversationsCount),
+      conversationsCount: conversationsCount || undefined,
+      avgFirstResponseTime: avgFirstResponseTime || undefined,
+      avgReplyTime: avgReplyTime || undefined,
+      avgResolutionTime: avgResolutionTime || undefined,
+      resolutionsCount: resolvedConversationsCount || undefined,
     };
   })
 );
@@ -163,6 +197,8 @@ const onFilterChange = updatedFilter => {
   fetchAllData();
 };
 
+const sorting = ref([]);
+
 const table = useVueTable({
   get data() {
     return tableData.value;
@@ -170,8 +206,17 @@ const table = useVueTable({
   get columns() {
     return columns.value;
   },
-  enableSorting: false,
+  state: {
+    get sorting() {
+      return sorting.value;
+    },
+  },
+  onSortingChange: updater => {
+    sorting.value =
+      typeof updater === 'function' ? updater(sorting.value) : updater;
+  },
   getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
 });
 
 // downloadReports method is not used in this component
@@ -227,4 +272,9 @@ defineExpose({ downloadReports });
       </div>
     </Transition>
   </div>
+  <EntityComparison
+    :type="type"
+    :items="rowItems"
+    :filters="{ from, to, businessHours }"
+  />
 </template>

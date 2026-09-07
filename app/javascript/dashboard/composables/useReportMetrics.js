@@ -53,10 +53,34 @@ export function useReportMetrics(
     return Number(accountSummary.value[key] || '').toLocaleString();
   };
 
+  /**
+   * Checks whether the previous period holds a value to compare against.
+   *
+   * @param {string} key - The key of the metric to check.
+   * @returns {boolean} True when the previous period has a comparable value.
+   */
+  const hasPreviousValue = key => Boolean(accountSummary.value.previous[key]);
+
+  /**
+   * Formats the previous period value of a metric, for the trend tooltip.
+   *
+   * @param {string} key - The key of the metric to display.
+   * @returns {string} The formatted previous value as a string.
+   */
+  const displayPreviousMetric = key => {
+    const value = accountSummary.value.previous[key];
+    if (isAverageMetricType(key)) {
+      return formatTime(value);
+    }
+    return Number(value || '').toLocaleString();
+  };
+
   return {
     calculateTrend,
     isAverageMetricType,
     displayMetric,
+    hasPreviousValue,
+    displayPreviousMetric,
     fetchingStatus,
   };
 }

@@ -3,6 +3,7 @@ import { useReportMetrics } from 'dashboard/composables/useReportMetrics';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import { STATUS } from 'dashboard/store/constants';
 import { useI18n } from 'vue-i18n';
+import HelpIcon from '../HelpIcon.vue';
 
 const props = defineProps({
   metric: {
@@ -21,8 +22,14 @@ const props = defineProps({
 
 const { t } = useI18n();
 
-const { calculateTrend, displayMetric, isAverageMetricType, fetchingStatus } =
-  useReportMetrics(props.accountSummaryKey, props.summaryFetchingKey);
+const {
+  calculateTrend,
+  displayMetric,
+  displayPreviousMetric,
+  hasPreviousValue,
+  isAverageMetricType,
+  fetchingStatus,
+} = useReportMetrics(props.accountSummaryKey, props.summaryFetchingKey);
 
 const trendColor = (value, key) => {
   if (isAverageMetricType(key)) {
@@ -38,10 +45,20 @@ const trendColor = (value, key) => {
 
 <template>
   <div class="text-n-slate-11">
-    <span class="text-sm">
-      {{ metric.NAME }}
+    <div class="flex items-center gap-1">
+      <span class="text-sm">
+        {{ metric.NAME }}
+      </span>
+      <HelpIcon
+        :content="metric.INFO_TEXT"
+        data-test-id="chartStatsInfo"
+        class="mt-0.5"
+      />
+    </div>
+    <span class="block text-xs text-n-slate-10">
+      {{ metric.DESC }}
     </span>
-    <div class="flex items-end text-n-slate-12">
+    <div class="flex items-end mt-1 text-n-slate-12">
       <div v-if="fetchingStatus === STATUS.FETCHING">
         <Spinner />
       </div>
@@ -58,7 +75,12 @@ const trendColor = (value, key) => {
         {{ displayMetric(metric.KEY) }}
       </div>
       <div
-        v-if="metric.trend && fetchingStatus === STATUS.FINISHED"
+        v-if="
+          hasPreviousValue(metric.KEY) && fetchingStatus === STATUS.FINISHED
+        "
+        v-tooltip="
+          t('REPORT.TREND_INFO', { value: displayPreviousMetric(metric.KEY) })
+        "
         class="text-xs ml-4 flex items-center mb-0.5"
       >
         <div
@@ -67,7 +89,7 @@ const trendColor = (value, key) => {
           :class="trendColor(metric.trend, metric.KEY)"
         />
         <div
-          v-else
+          v-else-if="metric.trend > 0"
           class="h-0 w-0 border-x-4 medium border-x-transparent border-b-[8px] mr-1"
           :class="trendColor(metric.trend, metric.KEY)"
         />

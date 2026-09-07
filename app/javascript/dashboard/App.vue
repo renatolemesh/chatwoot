@@ -159,6 +159,8 @@ export default {
   padding: 4px 8px !important;
   border-radius: 6px;
   font-weight: 400;
+  max-width: 22rem;
+  white-space: normal;
 }
 
 .v-popper--theme-tooltip .v-popper__arrow-container {

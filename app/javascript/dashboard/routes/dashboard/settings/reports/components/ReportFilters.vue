@@ -7,6 +7,7 @@ import { getUnixStartOfDay, getUnixEndOfDay } from 'helpers/DateHelper';
 import subDays from 'date-fns/subDays';
 import differenceInDays from 'date-fns/differenceInDays';
 import ActiveFilterChip from './Filters/v3/ActiveFilterChip.vue';
+import HelpIcon from './HelpIcon.vue';
 import WootDatePicker from 'dashboard/components/ui/DatePicker/DatePicker.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import { GROUP_BY_FILTER } from '../constants';
@@ -103,11 +104,23 @@ const daysDifference = computed(() => {
   return differenceInDays(customDateRange.value[1], customDateRange.value[0]);
 });
 
+// Hour buckets only make sense on a short window: a week already yields 168 bars.
+const MAX_DAYS_FOR_HOUR_GROUPING = 6;
+const MIN_DAYS_FOR_WIDE_GROUPING = 29;
+
 const isGroupByPossible = computed(() => {
-  return props.showGroupBy && daysDifference.value >= 29;
+  if (!props.showGroupBy) return false;
+  return (
+    daysDifference.value <= MAX_DAYS_FOR_HOUR_GROUPING ||
+    daysDifference.value >= MIN_DAYS_FOR_WIDE_GROUPING
+  );
 });
 
 const GROUP_BY_OPTIONS = computed(() => ({
+  HOUR: [
+    { id: 1, name: t('REPORT.GROUPING_OPTIONS.DAY') },
+    { id: 5, name: t('REPORT.GROUPING_OPTIONS.HOUR') },
+  ],
   WEEK: [
     { id: 1, name: t('REPORT.GROUPING_OPTIONS.DAY') },
     { id: 2, name: t('REPORT.GROUPING_OPTIONS.WEEK') },
@@ -128,7 +141,8 @@ const fetchFilterItems = () => {
   const days = daysDifference.value;
   if (days >= 364) return GROUP_BY_OPTIONS.value.YEAR;
   if (days >= 90) return GROUP_BY_OPTIONS.value.MONTH;
-  if (days >= 29) return GROUP_BY_OPTIONS.value.WEEK;
+  if (days >= MIN_DAYS_FOR_WIDE_GROUPING) return GROUP_BY_OPTIONS.value.WEEK;
+  if (days <= MAX_DAYS_FOR_HOUR_GROUPING) return GROUP_BY_OPTIONS.value.HOUR;
   return GROUP_BY_OPTIONS.value.WEEK;
 };
 
@@ -367,8 +381,9 @@ onMounted(() => {
         v-if="showBusinessHours"
         class="flex items-center flex-shrink-0 ltr:ml-auto rtl:mr-auto"
       >
-        <span class="mx-2 text-sm whitespace-nowrap">
+        <span class="flex items-center gap-1 mx-2 text-sm whitespace-nowrap">
           {{ $t('REPORT.BUSINESS_HOURS') }}
+          <HelpIcon :content="$t('REPORT.BUSINESS_HOURS_HELP')" />
         </span>
         <span>
           <ToggleSwitch

@@ -12,7 +12,8 @@ class Mcp::Registry
     Mcp::Tools::ResolverConversa,
     Mcp::Tools::RelatorioResumo,
     Mcp::Tools::RelatorioPor,
-    Mcp::Tools::RelatorioAgora
+    Mcp::Tools::RelatorioAgora,
+    Mcp::Tools::RelatorioGargalos
   ].freeze
 
   class << self

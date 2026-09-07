@@ -7,6 +7,12 @@ import { REPORTS_EVENTS } from '../../../../helper/AnalyticsHelper/events';
 import { generateFileName } from 'dashboard/helper/downloadHelper';
 import ReportContainer from './ReportContainer.vue';
 import ReportHeader from './components/ReportHeader.vue';
+import ResponseTimePercentiles from './components/ResponseTimePercentiles.vue';
+import ConversationBacklog from './components/ConversationBacklog.vue';
+import ConversationFunnel from './components/ConversationFunnel.vue';
+import ResolutionReasons from './components/ResolutionReasons.vue';
+import InboxStatusBreakdown from './components/InboxStatusBreakdown.vue';
+import InboxLabelMatrix from './components/InboxLabelMatrix.vue';
 
 const REPORTS_KEYS = {
   CONVERSATIONS: 'conversations_count',
@@ -24,6 +30,12 @@ export default {
     ReportHeader,
     ReportFilters,
     ReportContainer,
+    ResponseTimePercentiles,
+    ConversationBacklog,
+    ConversationFunnel,
+    ResolutionReasons,
+    InboxStatusBreakdown,
+    InboxLabelMatrix,
     V4Button,
   },
   data() {
@@ -33,6 +45,12 @@ export default {
       groupBy: GROUP_BY_FILTER[1],
       businessHours: false,
     };
+  },
+  computed: {
+    reportFilters() {
+      const { from, to, businessHours } = this;
+      return { from, to, businessHours };
+    },
   },
   methods: {
     fetchAllData() {
@@ -122,5 +140,11 @@ export default {
       @filter-change="onFilterChange"
     />
     <ReportContainer :group-by="groupBy" />
+    <ResponseTimePercentiles :filters="reportFilters" />
+    <ConversationBacklog :filters="reportFilters" />
+    <ConversationFunnel :filters="reportFilters" />
+    <ResolutionReasons :filters="reportFilters" />
+    <InboxStatusBreakdown :filters="reportFilters" />
+    <InboxLabelMatrix :filters="reportFilters" />
   </div>
 </template>

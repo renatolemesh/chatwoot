@@ -5,6 +5,7 @@ import {
   Chart as ChartJS,
   Title,
   Tooltip,
+  Legend,
   BarElement,
   CategoryScale,
   LinearScale,
@@ -21,7 +22,14 @@ const props = defineProps({
   },
 });
 
-ChartJS.register(Title, Tooltip, BarElement, CategoryScale, LinearScale);
+ChartJS.register(
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale
+);
 
 const fontFamily =
   'Inter,-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
@@ -29,10 +37,12 @@ const fontFamily =
 const defaultChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  legend: {
-    display: false,
-    labels: {
-      fontFamily,
+  plugins: {
+    legend: {
+      display: false,
+      labels: {
+        font: { family: fontFamily },
+      },
     },
   },
   animation: {
@@ -67,9 +77,16 @@ const defaultChartOptions = {
   },
 };
 
-const options = computed(() => {
-  return { ...defaultChartOptions, ...props.chartOptions };
-});
+const options = computed(() => ({
+  ...defaultChartOptions,
+  ...props.chartOptions,
+  // Merge explicito: um chamador que passa plugins (tooltip, por exemplo) nao deve
+  // perder os defaults dos outros plugins, como a legenda desligada.
+  plugins: {
+    ...defaultChartOptions.plugins,
+    ...(props.chartOptions.plugins || {}),
+  },
+}));
 </script>
 
 <template>
