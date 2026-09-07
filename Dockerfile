@@ -47,8 +47,9 @@ COPY . .
 # Build assets
 ARG SECRET_KEY_BASE=dummy
 # Heap do Node na precompilacao. O default de 4096 nao cabe em host apertado:
-# o build concorre com as stacks ja em execucao e o OOM killer pode escolher a
-# pg-central em vez do build. Passe --build-arg NODE_HEAP_MB=2048 nesses casos.
+# o build concorre com o que ja estiver em execucao, e o OOM killer pode
+# escolher outro processo em vez do build -- inclusive o banco. Passe
+# --build-arg NODE_HEAP_MB=2048 nesses casos.
 ARG NODE_HEAP_MB=4096
 
 RUN export NODE_OPTIONS="--max-old-space-size=${NODE_HEAP_MB} --openssl-legacy-provider" && \

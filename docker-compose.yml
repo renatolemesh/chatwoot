@@ -1,21 +1,22 @@
 ########################################################################
-# Compose unico para as tres stacks do Connect (eletrofast, xpertion, teste).
+# Compose base, comum a qualquer instalacao.
 #
-# Tudo que difere entre elas vem do .env da propria pasta, entao este arquivo
-# pode ser versionado e um `git pull` propaga melhorias para as tres de uma vez,
-# sem copia manual e sem senha em texto puro.
+# Tudo que difere entre uma instalacao e outra vem do .env da propria pasta,
+# entao este arquivo pode ser versionado: um `git pull` propaga melhorias para
+# todas de uma vez, sem copia manual e sem credencial em texto puro. O que for
+# especifico de uma instalacao vai em docker-compose.override.yml, que o compose
+# le sozinho e o .gitignore ignora.
 #
 # A porta NAO precisa estar no CMD da imagem: config/puma.rb ja faz
 # `port ENV.fetch('PORT', 3000)`. Basta definir APP_PORT no .env.
 #
-# As migrations foram tiradas do boot de proposito. Com 66 pendentes o
+# As migrations foram tiradas do boot de proposito: com muitas pendentes o
 # container ficaria indisponivel durante a migracao, e web e worker subindo
 # juntos tentariam migrar ao mesmo tempo. Rodar como passo explicito:
 #   docker compose run --rm web bundle exec rails db:migrate
 #
-# Os servicos postgres locais das stacks antigas nao estao aqui: desde a
-# consolidacao as tres apontam para pg-central (POSTGRES_HOST=pg-central).
-# Confirmar antes de remover os containers antigos.
+# Nao ha servico de banco aqui: POSTGRES_HOST no .env aponta para onde ele
+# estiver.
 ########################################################################
 
 x-app-env: &app-env
@@ -34,7 +35,7 @@ x-app-env: &app-env
   DB_POOL: ${DB_POOL:-25}
   DB_TIMEOUT: ${DB_TIMEOUT:-30000}
   DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-30}
-  POSTGRES_HOST: ${POSTGRES_HOST:-pg-central}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_USERNAME: ${POSTGRES_USERNAME}
   POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD}
@@ -66,8 +67,8 @@ services:
     logging: *logging
 
   web:
-    # As tres stacks constroem deste mesmo repositorio. `docker compose build`
-    # gera e taggeia como APP_IMAGE; `up` so constroi se a imagem nao existir.
+    # `docker compose build` gera e taggeia como APP_IMAGE; `up` so constroi se
+    # a imagem ainda nao existir.
     build:
       context: .
       dockerfile: Dockerfile
@@ -99,9 +100,9 @@ services:
     logging: *logging
 
   worker:
-    # A stack de teste desliga este servico por docker-compose.override.yml: ela
-    # roda sobre uma copia de dados reais, e o Sidekiq dispararia webhooks e
-    # WhatsApp de verdade. Nas stacks de producao ele sobe normalmente.
+    # Uma instalacao que nao deva processar jobs -- por exemplo uma que rode
+    # sobre copia de dados, onde o Sidekiq dispararia webhooks e mensagens de
+    # verdade -- desliga este servico pelo docker-compose.override.yml.
     image: ${APP_IMAGE}
     container_name: ${STACK_PREFIX}-sidekiq
     depends_on: [redis]

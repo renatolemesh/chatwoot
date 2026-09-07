@@ -1,8 +1,8 @@
 ########################################################################
-# Modo DESENVOLVIMENTO da stack de teste.
+# Modo DESENVOLVIMENTO.
 #
-# O docker-compose.yml e a base comum as tres stacks (eletrofast, xpertion,
-# teste) e roda assets pre-compilados. Este arquivo e o oposto: monta o codigo
+# O docker-compose.yml e a base comum, com assets pre-compilados na imagem.
+# Este arquivo e o oposto: monta o codigo
 # do host, entao alterar um .vue ou um .rb NAO exige rebuild -- o Vite recarrega
 # o componente no navegador em ~6s e o Rails recarrega a classe na requisicao
 # seguinte. So Gemfile ou package.json exigem reconstruir a imagem:
@@ -56,7 +56,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: development
-    image: ${APP_IMAGE_DEV:-connect-new:dev}
+    image: ${APP_IMAGE_DEV}
     container_name: ${STACK_PREFIX}-rails
     depends_on: [redis]
     env_file: .env
@@ -69,7 +69,7 @@ services:
       # O rack-mini-profiler injeta um badge cujo includes.js responde 500 atras
       # do proxy. config/initializers/rack_profiler.rb le esta variavel.
       DISABLE_MINI_PROFILER: "true"
-      POSTGRES_HOST: ${POSTGRES_HOST:-pg-central}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_USERNAME: ${POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD}
@@ -101,7 +101,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: development
-    image: ${APP_IMAGE_DEV:-connect-new:dev}
+    image: ${APP_IMAGE_DEV}
     container_name: ${STACK_PREFIX}-vite
     environment:
       NODE_ENV: development
