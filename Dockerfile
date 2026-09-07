@@ -92,5 +92,7 @@ COPY --from=builder /app /app
 
 EXPOSE 3000
 
-# Default: migrate then start web.
-CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3000"]
+# Sem -p: config/puma.rb ja faz `port ENV.fetch('PORT', 3000)`, entao cada stack
+# escolhe a porta pela env PORT. Sem db:migrate: com o container servindo, migrar
+# no boot deixa a stack indisponivel e faz web e worker migrarem em paralelo.
+CMD ["bundle", "exec", "rails", "s", "-b", "0.0.0.0"]
