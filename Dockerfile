@@ -46,8 +46,12 @@ COPY . .
 
 # Build assets
 ARG SECRET_KEY_BASE=dummy
+# Heap do Node na precompilacao. O default de 4096 nao cabe em host apertado:
+# o build concorre com as stacks ja em execucao e o OOM killer pode escolher a
+# pg-central em vez do build. Passe --build-arg NODE_HEAP_MB=2048 nesses casos.
+ARG NODE_HEAP_MB=4096
 
-RUN export NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider" && \
+RUN export NODE_OPTIONS="--max-old-space-size=${NODE_HEAP_MB} --openssl-legacy-provider" && \
     SECRET_KEY_BASE=${SECRET_KEY_BASE} \
     RAILS_LOG_TO_STDOUT=enabled \
     bundle exec rails assets:precompile && \
@@ -86,6 +90,7 @@ WORKDIR /app
 COPY --from=builder /bundle /bundle
 COPY --from=builder /app /app
 
-EXPOSE 3002
+EXPOSE 3000
 
-CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3002"]
+# Default: migrate then start web.
+CMD ["bash", "-lc", "bundle exec rails db:migrate && bundle exec rails s -b 0.0.0.0 -p 3000"]
