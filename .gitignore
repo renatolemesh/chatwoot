@@ -108,3 +108,6 @@ Procfile.worktree
 
 # DockerData
 docker_data/*
+
+# Backups locais dos compose files (ver .compose-backup/)
+.compose-backup/

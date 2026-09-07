@@ -56,8 +56,14 @@ COPY package.json pnpm-lock.yaml ./
 RUN bundle install --jobs 4 --retry 3
 
 # Install Node.js dependencies
-# This layer will be cached unless package.json or pnpm-lock.yaml changes
-RUN pnpm install --frozen-lockfile --prefer-offline
+# This layer will be cached unless package.json or pnpm-lock.yaml changes.
+#
+# --shamefully-hoist is required here: the compose file mounts an anonymous
+# volume over /app/node_modules, and pnpm's default symlinked layout does not
+# survive that. Installing hoisted at build time is what lets the vite container
+# start straight into the dev server instead of re-installing on every boot.
+RUN pnpm config set node-linker hoisted && \
+    pnpm install --no-frozen-lockfile --shamefully-hoist
 
 # ============================================================================
 # Stage 3: Development runtime
@@ -72,7 +78,7 @@ COPY --from=dependencies /app/node_modules /app/node_modules
 # This means we don't copy the application code into the image
 # allowing for instant reflection of code changes
 
-EXPOSE 3002 3036
+EXPOSE 3000 3036
 
 # Default command (can be overridden in docker-compose)
 CMD ["bash"]

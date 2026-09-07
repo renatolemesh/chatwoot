@@ -44,6 +44,7 @@ if (isLibraryMode) {
 }
 
 export default defineConfig({
+  base: '/vite-dev/',
   plugins: plugins,
   
   // ============================================================================
@@ -52,16 +53,21 @@ export default defineConfig({
   server: isDevelopment ? {
     // Host configuration for Docker
     host: '0.0.0.0',
-    port: 3036,
+    port: Number(process.env.VITE_RUBY_PORT) || 3036,
     strictPort: true,
+    allowedHosts: true,
     
     // HMR configuration optimized for Docker
     hmr: {
       // Use the host that the browser should connect to
       host: process.env.VITE_RUBY_HMR_HOST || 'localhost',
-      port: 3036,
+      port: Number(process.env.VITE_RUBY_PORT) || 3036,
+      // Behind a TLS-terminating proxy the browser reaches HMR at wss://host:443,
+      // not ws://host:3036. clientPort is what the client is told to dial;
+      // port above stays the port the dev server actually listens on.
+      clientPort: Number(process.env.VITE_HMR_CLIENT_PORT) || 3036,
       // Use native WebSocket instead of polling
-      protocol: 'ws',
+      protocol: process.env.VITE_HMR_PROTOCOL || 'ws',
     },
     
     // Watch configuration for better file change detection
@@ -88,8 +94,8 @@ export default defineConfig({
     
     // Optimize dependency pre-bundling
     fs: {
-      // Allow serving files from the project root
-      allow: ['.'],
+      // Allow serving files from the project root and node_modules
+      allow: ['.', 'node_modules'],
     },
   } : undefined,
   
@@ -97,13 +103,13 @@ export default defineConfig({
   // DEPENDENCY OPTIMIZATION
   // ============================================================================
   optimizeDeps: {
-    // Pre-bundle dependencies for faster dev server startup
     include: [
       'vue',
       'vue-router',
       'vuex',
       'axios',
       'pinia',
+      'vue-i18n',
       '@vueuse/core',
       '@vueuse/components',
       'chart.js',
@@ -111,18 +117,36 @@ export default defineConfig({
       'date-fns',
       'dompurify',
       'highlight.js',
+      'linkify-it',
+      'js-cookie',
+      'lodash',
+      'floating-vue',
+      'vuex-router-sync',
+      'vue-dompurify-html',
+      '@sentry/vue',
+      '@highlightjs/vue-plugin',
+      '@formkit/vue',
+      '@amplitude/analytics-browser',
+      '@amplitude/analytics-core',
+      'lit',
+      'lit/decorators.js',
+      'lit/directives/class-map.js',
+      'lit/directives/ref.js',
+      'lit/directives/unsafe-html.js',
+      'lit/directives/join.js',
+      '@material/mwc-icon',
+      'tslib',
+      '@chatwoot/ninja-keys',
+      '@kurkle/color',
+      'vue3-click-away',
     ],
-    // Exclude large dependencies that don't need pre-bundling
     exclude: ['@chatwoot/prosemirror-schema'],
-    
-    // Force dependency optimization on server start
-    force: false,
-    
-    // Use esbuild for faster dependency pre-bundling
+    force: true,
     esbuildOptions: {
-      // Increase build speed
       logLevel: 'error',
       target: 'es2020',
+      nodePaths: ['node_modules'],
+      // IMPORTANT: remove defaultLoader completely, esbuild 0.21.5 doesn't support it
     },
   },
   
@@ -194,6 +218,7 @@ export default defineConfig({
       widget: path.resolve('./app/javascript/widget'),
       assets: path.resolve('./app/javascript/dashboard/assets'),
     },
+    preserveSymlinks: true,
   },
   
   // ============================================================================

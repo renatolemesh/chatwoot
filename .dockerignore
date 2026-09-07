@@ -15,3 +15,13 @@ vendor/bundle
 .DS_Store
 *.swp
 *~
+
+# Nada abaixo daqui entra na imagem, e todos custavam caro no contexto de build:
+# .pnpm-store 501M, docker_data 217M (dados do Postgres), .git 176M.
+# O initializer git_sha.rb ja trata a ausencia de .git (cai para 'unknown').
+.pnpm-store
+docker_data
+.git
+.github
+coverage
+Kanban Free
