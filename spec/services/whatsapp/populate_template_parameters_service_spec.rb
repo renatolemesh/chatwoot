@@ -70,28 +70,35 @@ describe Whatsapp::PopulateTemplateParametersService do
 
   describe '#build_parameter' do
     context 'when the value contains whitespace WhatsApp rejects' do
-      it 'collapses runs of more than 4 spaces' do
+      it 'caps runs of more than 4 spaces at the 4 WhatsApp allows' do
         result = service.build_parameter('Ordem de servico: 0340836     Equipamento: CHALEIRA')
 
-        expect(result).to eq({ type: 'text', text: 'Ordem de servico: 0340836 Equipamento: CHALEIRA' })
+        expect(result).to eq({ type: 'text', text: 'Ordem de servico: 0340836    Equipamento: CHALEIRA' })
       end
 
-      it 'collapses newlines and tabs' do
+      it 'leaves a run of exactly 4 spaces untouched' do
+        result = service.build_parameter('Ordem de servico: 0340836    Equipamento')
+
+        expect(result).to eq({ type: 'text', text: 'Ordem de servico: 0340836    Equipamento' })
+      end
+
+      it 'turns newlines and tabs into spaces' do
         result = service.build_parameter("primeira linha\nsegunda\tlinha")
 
         expect(result).to eq({ type: 'text', text: 'primeira linha segunda linha' })
       end
 
-      it 'collapses non-breaking spaces mixed with regular spaces' do
+      it 'normalises non-breaking spaces and caps the resulting run' do
+        # 2 espacos + NBSP + 3 espacos = 6 caracteres de espaco seguidos
         result = service.build_parameter("0340836  \u00A0   Equipamento")
 
-        expect(result).to eq({ type: 'text', text: '0340836 Equipamento' })
+        expect(result).to eq({ type: 'text', text: '0340836    Equipamento' })
       end
 
-      it 'preserves rich formatting markers while collapsing whitespace' do
+      it 'preserves rich formatting markers while normalising whitespace' do
         result = service.build_parameter("*Valor*\n\nR$ 50,00")
 
-        expect(result).to eq({ type: 'text', text: '*Valor* R$ 50,00' })
+        expect(result).to eq({ type: 'text', text: '*Valor*  R$ 50,00' })
       end
     end
 
@@ -105,10 +112,10 @@ describe Whatsapp::PopulateTemplateParametersService do
   end
 
   describe '#build_named_parameter' do
-    it 'collapses whitespace in the parameter value' do
+    it 'normalises whitespace in the parameter value' do
       result = service.build_named_parameter('orcamento', "Valor:\n\n     R$ 50,00")
 
-      expect(result).to eq({ type: 'text', parameter_name: 'orcamento', text: 'Valor: R$ 50,00' })
+      expect(result).to eq({ type: 'text', parameter_name: 'orcamento', text: 'Valor:    R$ 50,00' })
     end
   end
 end
