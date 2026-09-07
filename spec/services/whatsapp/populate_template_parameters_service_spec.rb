@@ -67,4 +67,48 @@ describe Whatsapp::PopulateTemplateParametersService do
       end
     end
   end
+
+  describe '#build_parameter' do
+    context 'when the value contains whitespace WhatsApp rejects' do
+      it 'collapses runs of more than 4 spaces' do
+        result = service.build_parameter('Ordem de servico: 0340836     Equipamento: CHALEIRA')
+
+        expect(result).to eq({ type: 'text', text: 'Ordem de servico: 0340836 Equipamento: CHALEIRA' })
+      end
+
+      it 'collapses newlines and tabs' do
+        result = service.build_parameter("primeira linha\nsegunda\tlinha")
+
+        expect(result).to eq({ type: 'text', text: 'primeira linha segunda linha' })
+      end
+
+      it 'collapses non-breaking spaces mixed with regular spaces' do
+        result = service.build_parameter("0340836  \u00A0   Equipamento")
+
+        expect(result).to eq({ type: 'text', text: '0340836 Equipamento' })
+      end
+
+      it 'preserves rich formatting markers while collapsing whitespace' do
+        result = service.build_parameter("*Valor*\n\nR$ 50,00")
+
+        expect(result).to eq({ type: 'text', text: '*Valor* R$ 50,00' })
+      end
+    end
+
+    context 'when the value has no problematic whitespace' do
+      it 'leaves single spaces untouched' do
+        result = service.build_parameter('Equipe Eletro Fast')
+
+        expect(result).to eq({ type: 'text', text: 'Equipe Eletro Fast' })
+      end
+    end
+  end
+
+  describe '#build_named_parameter' do
+    it 'collapses whitespace in the parameter value' do
+      result = service.build_named_parameter('orcamento', "Valor:\n\n     R$ 50,00")
+
+      expect(result).to eq({ type: 'text', parameter_name: 'orcamento', text: 'Valor: R$ 50,00' })
+    end
+  end
 end

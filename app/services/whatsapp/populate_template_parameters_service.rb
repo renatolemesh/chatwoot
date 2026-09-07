@@ -136,7 +136,17 @@ class Whatsapp::PopulateTemplateParametersService
     # Basic sanitization - remove dangerous characters and limit length
     sanitized = value.to_s.strip
     sanitized = sanitized.gsub(/[<>\"']/, '') # Remove potential HTML/JS chars
+    sanitized = collapse_whitespace(sanitized)
     sanitized[0...1000] # Limit length to prevent DoS
+  end
+
+  # WhatsApp rejects template parameters that contain newlines, tabs or more
+  # than 4 consecutive spaces with "(#132018) There's an issue with the
+  # parameters in your template". Collapse every whitespace run - including
+  # non-breaking spaces, which external systems often paste in - to a single
+  # space so the message is delivered instead of silently failing.
+  def collapse_whitespace(value)
+    value.gsub(/[[:space:]\u00A0]+/, ' ')
   end
 
   def normalize_url(url)
