@@ -41,6 +41,10 @@ const searchQuery = ref('');
 const activeCountryCode = ref(getActiveCountryCode());
 const activeDialCode = ref(getActiveDialCode());
 const phoneNumber = ref('');
+// Tracks whether the value being edited arrived with a leading '+', so the dial code is
+// only stripped when the user actually typed/pasted one. A national number that starts
+// with the same digits as the dial code (area code 55 under +55, for one) is left alone.
+const hadPlusSign = ref(false);
 
 const rules = {
   phoneNumber: {
@@ -117,6 +121,33 @@ const emitPhoneNumber = value => {
   modelValue.value = newValue;
 };
 
+// The field holds the national number only, and `numeric` accepts nothing but digits.
+// Spaces, dashes, parentheses and the invisible characters that tag along when a number
+// is pasted from a chat all tripped the validation, so normalize before validating
+// instead of showing an E.164 error the field could never satisfy.
+const onPhoneNumberInput = value => {
+  const rawValue = (value ?? '').toString().trim();
+  if (rawValue.startsWith('+')) {
+    hadPlusSign.value = true;
+  } else if (rawValue === '') {
+    hadPlusSign.value = false;
+  }
+
+  let digits = rawValue.replace(/\D/g, '');
+  const dialCodeDigits = (activeDialCode.value || '').replace(/\D/g, '');
+  if (
+    hadPlusSign.value &&
+    dialCodeDigits &&
+    digits.startsWith(dialCodeDigits) &&
+    digits.length > dialCodeDigits.length
+  ) {
+    digits = digits.slice(dialCodeDigits.length);
+    hadPlusSign.value = false;
+  }
+
+  phoneNumber.value = digits;
+};
+
 const onSelectCountry = async ({ value, dialCode }) => {
   if (!value || !showDropdown.value) return;
 
@@ -167,12 +198,13 @@ watch(
       :class="[inputBorderClass, { 'cursor-not-allowed opacity-50': disabled }]"
     >
       <Input
-        v-model="phoneNumber"
+        :model-value="phoneNumber"
         type="tel"
         :placeholder="placeholder"
         :disabled="disabled"
         custom-input-class="!border-0 !outline-none h-8 !py-0.5 !bg-transparent ltr:!pl-1 rtl:!pr-1"
         class="w-full !flex-row"
+        @update:model-value="onPhoneNumberInput"
       >
         <template #prefix>
           <div class="flex items-center flex-shrink-0">
