@@ -41,6 +41,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  company: {
+    type: String,
+    default: '',
+  },
 });
 
 const { inbox } = useInbox(props.inbox?.id);
@@ -66,6 +70,11 @@ const infoItems = computed(() => [
     label: 'SEARCH.FROM',
     value: props.name,
     show: !!props.name,
+  },
+  {
+    label: 'SEARCH.COMPANY',
+    value: props.company,
+    show: !!props.company,
   },
   {
     label: 'SEARCH.EMAIL',

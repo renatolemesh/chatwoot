@@ -1,6 +1,11 @@
 class SearchService
   pattr_initialize [:current_user!, :current_account!, :params!, :search_type!]
 
+  # A empresa do contato fica em additional_attributes->>'company_name', o campo preenchido
+  # no cadastro. Prefixado com o nome da tabela para servir tanto a busca de contatos
+  # quanto a de conversas, que faz JOIN com contacts.
+  COMPANY_NAME_CLAUSE = "contacts.additional_attributes->>'company_name' ILIKE :search".freeze
+
   def account_user
     @account_user ||= current_account.account_users.find_by(user: current_user)
   end
@@ -46,7 +51,8 @@ class SearchService
     conversations_query = current_account.conversations.where(inbox_id: accessable_inbox_ids)
                                          .joins('INNER JOIN contacts ON conversations.contact_id = contacts.id')
                                          .where("cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email
-                            ILIKE :search OR #{phone_clause} OR contacts.identifier ILIKE :search", bindings)
+                            ILIKE :search OR #{phone_clause} OR contacts.identifier ILIKE :search
+                            OR #{COMPANY_NAME_CLAUSE}", bindings)
 
     if current_account.feature_enabled?('advanced_search')
       conversations_query = apply_time_filter(conversations_query,
@@ -180,7 +186,7 @@ class SearchService
     bindings[:digits] = "%#{digits_only_query}%" if digits_only_query.present?
 
     contacts_query = current_account.contacts.where(
-      "name ILIKE :search OR email ILIKE :search OR #{phone_clause} OR identifier ILIKE :search", bindings
+      "name ILIKE :search OR email ILIKE :search OR #{phone_clause} OR identifier ILIKE :search OR #{COMPANY_NAME_CLAUSE}", bindings
     )
 
     contacts_query = apply_time_filter(contacts_query, 'last_activity_at') if current_account.feature_enabled?('advanced_search')

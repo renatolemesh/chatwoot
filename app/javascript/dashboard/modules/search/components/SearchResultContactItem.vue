@@ -60,6 +60,8 @@ const updatedAtTime = computed(() => {
   return dynamicTime(props.updatedAt);
 });
 
+const company = computed(() => props.additionalAttributes?.companyName || '');
+
 const countryDetails = computed(() => {
   const { country, countryCode, city } = props.additionalAttributes;
 
@@ -112,8 +114,21 @@ const formattedLocation = computed(() => {
           </span>
         </div>
         <div
-          class="grid items-center gap-3 m-0 text-sm overflow-hidden min-w-0 grid-cols-[minmax(0,max-content)_auto_minmax(0,max-content)_auto_minmax(0,max-content)]"
+          class="grid items-center gap-3 m-0 text-sm overflow-hidden min-w-0 grid-cols-[minmax(0,max-content)_auto_minmax(0,max-content)_auto_minmax(0,max-content)_auto_minmax(0,max-content)]"
         >
+          <span
+            v-if="company"
+            class="truncate text-n-slate-11 min-w-0"
+            :title="company"
+          >
+            {{ company }}
+          </span>
+
+          <div
+            v-if="company && (email || phone)"
+            class="w-px h-3 bg-n-slate-6 rounded"
+          />
+
           <span
             v-if="email"
             class="truncate text-n-slate-11 min-w-0"
@@ -133,7 +148,7 @@ const formattedLocation = computed(() => {
           </span>
 
           <div
-            v-if="(email || phone) && countryDetails"
+            v-if="(company || email || phone) && countryDetails"
             class="w-px h-3 bg-n-slate-6 rounded"
           />
 

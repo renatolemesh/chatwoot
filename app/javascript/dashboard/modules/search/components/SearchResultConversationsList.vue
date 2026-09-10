@@ -55,6 +55,7 @@ const conversationsWithSubject = computed(() => {
           :inbox="conversation.inbox"
           :created-at="conversation.createdAt"
           :email-subject="conversation.mailSubject"
+          :company="conversation.contact?.additionalAttributes?.companyName"
         />
       </li>
     </ul>
